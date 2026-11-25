@@ -4,6 +4,7 @@ import {
   GoogleGenAI,
   Type,
   type Content,
+  type FunctionCall,
   type FunctionDeclaration,
   type Part,
 } from '@google/genai';
@@ -52,7 +53,8 @@ const TOOL_DECLARATIONS: FunctionDeclaration[] = [
       properties: {
         as_of_date: {
           type: Type.STRING,
-          description: 'Optional YYYY-MM-DD snapshot date in Asia/Kolkata IST (e.g. 2025-04-20 or 2025-02-28). Defaults to the user currently selected date.',
+          description:
+            'Optional YYYY-MM-DD snapshot date in Asia/Kolkata IST (e.g. 2025-04-20 or 2025-02-28). Defaults to the user currently selected date.',
         },
       },
     },
@@ -140,7 +142,8 @@ const TOOL_DECLARATIONS: FunctionDeclaration[] = [
         },
         owner_name: {
           type: Type.STRING,
-          description: 'Responsible team member name (e.g. Riya Kapoor, Kabir Shah, Meera Iyer, Nisha Rao).',
+          description:
+            'Responsible team member name (e.g. Riya Kapoor, Kabir Shah, Meera Iyer, Nisha Rao).',
         },
         due_date: {
           type: Type.STRING,
@@ -180,7 +183,7 @@ CORE RULES (NON-NEGOTIABLE):
 5. Keep separate populations distinct: never conflate outreach attempts, unique contacts touched, responding brands, positive-reply brands, qualified brands, opportunities, and confirmed partnerships.
 
 MANDATORY "DATA CANNOT ANSWER / HONEST UNCERTAINTY" GUARDRAILS:
-- **Bank Receipts / Cash Collected:** If asked about actual bank receipts or cash collected, inspect financials.verified_cash_collected_inr and financials.has_recorded_cash_receipts. If verified_cash_collected_inr is null on original source deals, explicitly state that reported INR deal values (e.g., ₹22,40,000 total reported: ₹20,00,000 cash + ₹2,40,000 in-kind at baseline) are NOT proof of bank receipt, and distinguish reported cash deal value from logged receipts (which are NULL / not recorded in source data unless users logged receipts).
+- **Bank Receipts / Cash Collected:** If asked about actual bank receipts or cash collected, inspect financials.verified_cash_collected_inr and financials.has_recorded_cash_receipts. If verified_cash_collected_inr is null on original source deals, explicitly state that reported INR values in the source dataset (e.g., ₹22,40,000 total reported: ₹20,00,000 cash + ₹2,40,000 in-kind at baseline) are NOT proof of bank receipt, and report verified_cash_collected_inr (NULL / not recorded in source data) separately.
 - **Marketing Spend, CAC, or Channel ROI:** If asked for marketing spend, CAC, or channel ROI, explicitly state that the source dataset contains NO spend or cost figures, so CAC and financial ROI cannot be computed. You may still report attempt-to-deal efficiency and reported value by channel from tool output.
 - **Partner Activations & Attendee Uplift:** If asked whether partner activations caused attendee uplift, explicitly state that the 3 activation links (Beardo A001/O001, Mosaic Mobility A003/O004, Maple Devices A006/O007) are observational associations linked 1–2 days post-confirmation and do NOT establish causal attendee uplift.
 - **Synthetic / Fictional Case Data:** If asked about real-world claims regarding Beardo or any brand, explicitly note that CampusFest 2025 and all brands/contacts/outreach records are synthetic/fictional, and Beardo is an illustrative label only.
@@ -206,6 +209,25 @@ function summarizeToolLabel(toolName: string, asOfDate?: string): string {
       return 'Staged task proposal card';
     default:
       return toolName;
+  }
+}
+
+function liveStatusLabel(toolName: string, asOfDate?: string): string {
+  switch (toolName) {
+    case 'get_snapshot_summary':
+      return `Checking live snapshot (${asOfDate ?? DEFAULT_AS_OF_DATE})...`;
+    case 'get_channel_and_campaign_performance':
+      return `Analyzing channel & campaign performance (${asOfDate ?? DEFAULT_AS_OF_DATE})...`;
+    case 'diagnose_bottlenecks':
+      return `Diagnosing pipeline bottlenecks (${asOfDate ?? DEFAULT_AS_OF_DATE})...`;
+    case 'query_opportunities':
+      return `Querying opportunities (${asOfDate ?? DEFAULT_AS_OF_DATE})...`;
+    case 'list_tasks':
+      return 'Checking existing growth tasks...';
+    case 'propose_create_task':
+      return 'Staging task proposal card...';
+    default:
+      return `Running ${toolName}...`;
   }
 }
 
@@ -242,6 +264,21 @@ function isRetryableOrFallbackError(err: unknown): boolean {
   );
 }
 
+function buildModelConfig(
+  model: string,
+  systemInstruction: string,
+  timeoutMs: number,
+  includeTools = true
+) {
+  return {
+    systemInstruction,
+    ...(includeTools ? { tools: [{ functionDeclarations: TOOL_DECLARATIONS }] } : {}),
+    temperature: 0.2,
+    ...(model === 'gemini-3.5-flash' ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+    abortSignal: AbortSignal.timeout(timeoutMs),
+  };
+}
+
 async function generateWithFallback(
   ai: GoogleGenAI,
   models: string[],
@@ -256,13 +293,7 @@ async function generateWithFallback(
       const response = await ai.models.generateContent({
         model,
         contents,
-        config: {
-          systemInstruction,
-          tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
-          temperature: 0.2,
-          ...(model === 'gemini-3.5-flash' ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-          abortSignal: AbortSignal.timeout(15000),
-        },
+        config: buildModelConfig(model, systemInstruction, 15000, true),
       });
       return { response, model };
     } catch (err) {
@@ -279,24 +310,254 @@ async function generateWithFallback(
     }
   }
 
-  // Second pass on transient 503/timeout models after brief backoff
   for (const model of nonQuotaModels) {
     await new Promise((r) => setTimeout(r, 1200));
     try {
       const response = await ai.models.generateContent({
         model,
         contents,
-        config: {
-          systemInstruction,
-          tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
-          temperature: 0.2,
-          ...(model === 'gemini-3.5-flash' ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-          abortSignal: AbortSignal.timeout(18000),
-        },
+        config: buildModelConfig(model, systemInstruction, 18000, true),
       });
       return { response, model };
     } catch (err) {
       lastError = err;
+      if (isRetryableOrFallbackError(err)) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError;
+}
+
+async function runToolRound(
+  functionCalls: FunctionCall[],
+  round: number,
+  activeAsOfDate: string,
+  toolLogs: ToolExecutionLog[],
+  proposedTasks: ProposedTaskPayload[]
+): Promise<Part[]> {
+  return Promise.all(
+    functionCalls.map(async (fc, idx) => {
+      const name = fc.name ?? 'unknown';
+      const args = (fc.args ?? {}) as Record<string, unknown>;
+      const callId = fc.id ?? `${name}_${round}_${idx}`;
+
+      try {
+        let output: unknown;
+        let loggedDate: string | undefined;
+
+        if (name === 'get_snapshot_summary') {
+          const targetDate = normalizeAsOfDate(
+            typeof args.as_of_date === 'string' && args.as_of_date.trim()
+              ? args.as_of_date
+              : activeAsOfDate
+          );
+          loggedDate = targetDate;
+          output = await getSnapshotSummary(targetDate);
+        } else if (name === 'get_channel_and_campaign_performance') {
+          const targetDate = normalizeAsOfDate(
+            typeof args.as_of_date === 'string' && args.as_of_date.trim()
+              ? args.as_of_date
+              : activeAsOfDate
+          );
+          loggedDate = targetDate;
+          output = await getChannelAndCampaignPerformance(targetDate);
+        } else if (name === 'diagnose_bottlenecks') {
+          const targetDate = normalizeAsOfDate(
+            typeof args.as_of_date === 'string' && args.as_of_date.trim()
+              ? args.as_of_date
+              : activeAsOfDate
+          );
+          loggedDate = targetDate;
+          output = await diagnoseBottlenecks(targetDate);
+        } else if (name === 'query_opportunities') {
+          const targetDate = normalizeAsOfDate(
+            typeof args.as_of_date === 'string' && args.as_of_date.trim()
+              ? args.as_of_date
+              : activeAsOfDate
+          );
+          loggedDate = targetDate;
+          output = await queryOpportunities({
+            stage: typeof args.stage === 'string' ? args.stage : undefined,
+            industry: typeof args.industry === 'string' ? args.industry : undefined,
+            brand_name: typeof args.brand_name === 'string' ? args.brand_name : undefined,
+            as_of_date: targetDate,
+          });
+        } else if (name === 'list_tasks') {
+          const status = typeof args.status === 'string' ? args.status : undefined;
+          const tasks = await listTasks(status);
+          output = { count: tasks.length, tasks };
+        } else if (name === 'propose_create_task') {
+          const rawPriority = String(args.priority ?? 'medium').toLowerCase();
+          const priority: 'high' | 'medium' | 'low' =
+            rawPriority === 'high' || rawPriority === 'low' ? rawPriority : 'medium';
+
+          const proposal: ProposedTaskPayload = {
+            proposal_id: `prop_${Date.now()}_${proposedTasks.length + 1}`,
+            title: String(args.title ?? 'Follow-up task').trim(),
+            description: String(args.description ?? '').trim(),
+            owner_name: String(args.owner_name ?? 'Riya Kapoor').trim(),
+            due_date: String(args.due_date ?? activeAsOfDate).trim(),
+            priority,
+            reason: String(args.reason ?? '').trim(),
+            linked_brand_id:
+              typeof args.linked_brand_id === 'string' && args.linked_brand_id.trim()
+                ? args.linked_brand_id.trim()
+                : undefined,
+            linked_opportunity_id:
+              typeof args.linked_opportunity_id === 'string' && args.linked_opportunity_id.trim()
+                ? args.linked_opportunity_id.trim()
+                : undefined,
+          };
+          proposedTasks.push(proposal);
+          output = {
+            staged_for_confirmation: true,
+            written_to_database: false,
+            proposal,
+          };
+        } else {
+          output = { error: `Unknown tool "${name}"` };
+        }
+
+        toolLogs.push({
+          tool: name,
+          label: summarizeToolLabel(name, loggedDate),
+          as_of_date: loggedDate,
+        });
+
+        return createPartFromFunctionResponse(callId, name, { result: output });
+      } catch (toolError) {
+        const errMsg = toolError instanceof Error ? toolError.message : 'Tool execution failed';
+        toolLogs.push({
+          tool: name,
+          label: `${name} failed: ${errMsg}`,
+        });
+        return createPartFromFunctionResponse(callId, name, { error: errMsg });
+      }
+    })
+  );
+}
+
+/**
+ * Streams a final response using generateContentStream with model fallback
+ * if the stream fails before any chunk is received. If a chunk unexpectedly
+ * emits function calls, returns them cleanly without emitting partial tokens.
+ */
+async function streamTurnWithFallback(
+  ai: GoogleGenAI,
+  models: string[],
+  contents: Content[],
+  systemInstruction: string,
+  onToken: (text: string) => void
+): Promise<{
+  model: string;
+  functionCalls: FunctionCall[];
+  modelParts: Part[];
+  emittedTokens: boolean;
+}> {
+  let lastError: unknown;
+  const nonQuotaModels: string[] = [];
+
+  const attemptModel = async (
+    model: string,
+    timeoutMs: number,
+    markTokenEmitted: () => void
+  ) => {
+    let emittedAny = false;
+    let firstTokenSeen = false;
+    const collectedCalls: FunctionCall[] = [];
+    const collectedParts: Part[] = [];
+
+    const stream = await ai.models.generateContentStream({
+      model,
+      contents,
+      config: buildModelConfig(model, systemInstruction, timeoutMs, true),
+    });
+
+    for await (const chunk of stream) {
+      const parts = chunk.candidates?.[0]?.content?.parts ?? [];
+      for (const p of parts) {
+        if (p.functionCall) {
+          collectedCalls.push(p.functionCall);
+          collectedParts.push(p);
+        }
+      }
+      if (collectedCalls.length === 0 && chunk.functionCalls?.length) {
+        for (const fc of chunk.functionCalls) {
+          collectedCalls.push(fc);
+          collectedParts.push({ functionCall: fc });
+        }
+      }
+      if (collectedCalls.length > 0) {
+        continue;
+      }
+
+      let textChunk = '';
+      for (const p of parts) {
+        if (typeof p.text === 'string' && !p.thought) {
+          textChunk += p.text;
+        }
+      }
+      if (!textChunk && typeof chunk.text === 'string') {
+        textChunk = chunk.text;
+      }
+
+      if (textChunk) {
+        if (!firstTokenSeen) {
+          firstTokenSeen = true;
+          textChunk = textChunk.replace(/^thought\s*\r?\n/i, '');
+        }
+        if (textChunk) {
+          emittedAny = true;
+          markTokenEmitted();
+          onToken(textChunk);
+        }
+      }
+    }
+
+    return {
+      model,
+      functionCalls: collectedCalls,
+      modelParts: collectedParts,
+      emittedTokens: emittedAny,
+    };
+  };
+
+  for (const model of models) {
+    let chunkStarted = false;
+    try {
+      const res = await attemptModel(model, 18000, () => {
+        chunkStarted = true;
+      });
+      return res;
+    } catch (err) {
+      lastError = err;
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Copilot Stream] Model ${model} failed: ${errMsg.slice(0, 220)}`);
+      if (chunkStarted) throw err;
+      if (!isQuotaError(err) && !errMsg.includes('404') && !errMsg.includes('NOT_FOUND')) {
+        nonQuotaModels.push(model);
+      }
+      if (isRetryableOrFallbackError(err)) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  for (const model of nonQuotaModels) {
+    let chunkStarted = false;
+    await new Promise((r) => setTimeout(r, 1200));
+    try {
+      const res = await attemptModel(model, 20000, () => {
+        chunkStarted = true;
+      });
+      return res;
+    } catch (err) {
+      lastError = err;
+      if (chunkStarted) throw err;
       if (isRetryableOrFallbackError(err)) {
         continue;
       }
@@ -339,170 +600,243 @@ export async function POST(request: NextRequest) {
       }));
 
     if (contents.length === 0) {
-      return NextResponse.json({ error: 'At least one non-empty message is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'At least one non-empty message is required' },
+        { status: 400 }
+      );
     }
+
+    const streamParam = request.nextUrl.searchParams.get('stream');
+    const acceptHeader = (request.headers.get('accept') ?? '').toLowerCase();
+    const wantsJson =
+      streamParam === 'false' ||
+      (acceptHeader.includes('application/json') && !acceptHeader.includes('text/event-stream'));
 
     const ai = new GoogleGenAI({ apiKey });
     const modelCandidates = process.env.GEMINI_MODEL
-      ? [process.env.GEMINI_MODEL, ...DEFAULT_FLASH_MODELS.filter((m) => m !== process.env.GEMINI_MODEL)]
+      ? [
+          process.env.GEMINI_MODEL,
+          ...DEFAULT_FLASH_MODELS.filter((m) => m !== process.env.GEMINI_MODEL),
+        ]
       : DEFAULT_FLASH_MODELS;
-    let activeModel = modelCandidates[0];
-    const toolLogs: ToolExecutionLog[] = [];
-    const proposedTasks: ProposedTaskPayload[] = [];
-    let finalText = '';
-
-    const MAX_ROUNDS = 8;
     const systemInstruction = buildSystemInstruction(activeAsOfDate);
+    const MAX_ROUNDS = 8;
 
-    for (let round = 0; round < MAX_ROUNDS; round++) {
-      const orderedModels = [
-        activeModel,
-        ...modelCandidates.filter((m) => m !== activeModel),
-      ];
-      const { response, model: usedModel } = await generateWithFallback(
-        ai,
-        orderedModels,
-        contents,
-        systemInstruction
-      );
-      activeModel = usedModel;
+    // Non-streaming JSON fallback for automated tests or ?stream=false
+    if (wantsJson) {
+      let activeModel = modelCandidates[0];
+      const toolLogs: ToolExecutionLog[] = [];
+      const proposedTasks: ProposedTaskPayload[] = [];
+      let finalText = '';
 
-      const functionCalls = response.functionCalls;
-      if (!functionCalls || functionCalls.length === 0) {
-        const rawText = response.text?.trim() || 'No response generated.';
-        finalText = rawText.replace(/^thought\s*\r?\n/i, '').trim();
-        break;
+      for (let round = 0; round < MAX_ROUNDS; round++) {
+        const orderedModels = [
+          activeModel,
+          ...modelCandidates.filter((m) => m !== activeModel),
+        ];
+        const { response, model: usedModel } = await generateWithFallback(
+          ai,
+          orderedModels,
+          contents,
+          systemInstruction
+        );
+        activeModel = usedModel;
+
+        const functionCalls = response.functionCalls;
+        if (!functionCalls || functionCalls.length === 0) {
+          const rawText = response.text?.trim() || 'No response generated.';
+          finalText = rawText.replace(/^thought\s*\r?\n/i, '').trim();
+          break;
+        }
+
+        const modelContent = response.candidates?.[0]?.content;
+        if (modelContent) {
+          contents.push(modelContent);
+        } else {
+          contents.push({
+            role: 'model',
+            parts: functionCalls.map((fc) => ({ functionCall: fc })),
+          });
+        }
+
+        const responseParts = await runToolRound(
+          functionCalls,
+          round,
+          activeAsOfDate,
+          toolLogs,
+          proposedTasks
+        );
+        contents.push({ role: 'user', parts: responseParts });
+
+        if (round === MAX_ROUNDS - 1) {
+          finalText =
+            'Reached maximum tool-execution rounds for this turn. Please ask a more specific follow-up.';
+        }
       }
 
-      const modelContent = response.candidates?.[0]?.content;
-      if (modelContent) {
-        contents.push(modelContent);
-      } else {
-        contents.push({
-          role: 'model',
-          parts: functionCalls.map((fc) => ({ functionCall: fc })),
-        });
-      }
-
-      const responseParts: Part[] = await Promise.all(
-        functionCalls.map(async (fc, idx) => {
-          const name = fc.name ?? 'unknown';
-          const args = (fc.args ?? {}) as Record<string, unknown>;
-          const callId = fc.id ?? `${name}_${round}_${idx}`;
-
-          try {
-            let output: unknown;
-            let loggedDate: string | undefined;
-
-            if (name === 'get_snapshot_summary') {
-              const targetDate = normalizeAsOfDate(
-                typeof args.as_of_date === 'string' && args.as_of_date.trim()
-                  ? args.as_of_date
-                  : activeAsOfDate
-              );
-              loggedDate = targetDate;
-              output = await getSnapshotSummary(targetDate);
-            } else if (name === 'get_channel_and_campaign_performance') {
-              const targetDate = normalizeAsOfDate(
-                typeof args.as_of_date === 'string' && args.as_of_date.trim()
-                  ? args.as_of_date
-                  : activeAsOfDate
-              );
-              loggedDate = targetDate;
-              output = await getChannelAndCampaignPerformance(targetDate);
-            } else if (name === 'diagnose_bottlenecks') {
-              const targetDate = normalizeAsOfDate(
-                typeof args.as_of_date === 'string' && args.as_of_date.trim()
-                  ? args.as_of_date
-                  : activeAsOfDate
-              );
-              loggedDate = targetDate;
-              output = await diagnoseBottlenecks(targetDate);
-            } else if (name === 'query_opportunities') {
-              const targetDate = normalizeAsOfDate(
-                typeof args.as_of_date === 'string' && args.as_of_date.trim()
-                  ? args.as_of_date
-                  : activeAsOfDate
-              );
-              loggedDate = targetDate;
-              output = await queryOpportunities({
-                stage: typeof args.stage === 'string' ? args.stage : undefined,
-                industry: typeof args.industry === 'string' ? args.industry : undefined,
-                brand_name: typeof args.brand_name === 'string' ? args.brand_name : undefined,
-                as_of_date: targetDate,
-              });
-            } else if (name === 'list_tasks') {
-              const status = typeof args.status === 'string' ? args.status : undefined;
-              const tasks = await listTasks(status);
-              output = { count: tasks.length, tasks };
-            } else if (name === 'propose_create_task') {
-              const rawPriority = String(args.priority ?? 'medium').toLowerCase();
-              const priority: 'high' | 'medium' | 'low' =
-                rawPriority === 'high' || rawPriority === 'low' ? rawPriority : 'medium';
-
-              const proposal: ProposedTaskPayload = {
-                proposal_id: `prop_${Date.now()}_${proposedTasks.length + 1}`,
-                title: String(args.title ?? 'Follow-up task').trim(),
-                description: String(args.description ?? '').trim(),
-                owner_name: String(args.owner_name ?? 'Riya Kapoor').trim(),
-                due_date: String(args.due_date ?? activeAsOfDate).trim(),
-                priority,
-                reason: String(args.reason ?? '').trim(),
-                linked_brand_id:
-                  typeof args.linked_brand_id === 'string' && args.linked_brand_id.trim()
-                    ? args.linked_brand_id.trim()
-                    : undefined,
-                linked_opportunity_id:
-                  typeof args.linked_opportunity_id === 'string' &&
-                  args.linked_opportunity_id.trim()
-                    ? args.linked_opportunity_id.trim()
-                    : undefined,
-              };
-              proposedTasks.push(proposal);
-              output = {
-                staged_for_confirmation: true,
-                written_to_database: false,
-                proposal,
-              };
-            } else {
-              output = { error: `Unknown tool "${name}"` };
-            }
-
-            toolLogs.push({
-              tool: name,
-              label: summarizeToolLabel(name, loggedDate),
-              as_of_date: loggedDate,
-            });
-
-            return createPartFromFunctionResponse(callId, name, { result: output });
-          } catch (toolError) {
-            const errMsg = toolError instanceof Error ? toolError.message : 'Tool execution failed';
-            toolLogs.push({
-              tool: name,
-              label: `${name} failed: ${errMsg}`,
-            });
-            return createPartFromFunctionResponse(callId, name, { error: errMsg });
-          }
-        })
-      );
-
-      contents.push({
-        role: 'user',
-        parts: responseParts,
+      return NextResponse.json({
+        reply: finalText,
+        model: activeModel,
+        as_of_date: activeAsOfDate,
+        tools_used: toolLogs,
+        proposed_tasks: proposedTasks,
       });
-
-      if (round === MAX_ROUNDS - 1) {
-        finalText =
-          'Reached maximum tool-execution rounds for this turn. Please ask a more specific follow-up.';
-      }
     }
 
-    return NextResponse.json({
-      reply: finalText,
-      model: activeModel,
-      as_of_date: activeAsOfDate,
-      tools_used: toolLogs,
-      proposed_tasks: proposedTasks,
+    // Hybrid SSE Streaming response: non-streaming tool rounds -> live token streaming
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const sendEvent = (payload: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        };
+
+        let activeModel = modelCandidates[0];
+        const toolLogs: ToolExecutionLog[] = [];
+        const proposedTasks: ProposedTaskPayload[] = [];
+
+        try {
+          sendEvent({ type: 'status', label: `Inspecting ${activeAsOfDate} snapshot...` });
+
+          for (let round = 0; round < MAX_ROUNDS; round++) {
+            const orderedModels = [
+              activeModel,
+              ...modelCandidates.filter((m) => m !== activeModel),
+            ];
+
+            // Round 0 always runs non-streaming so initial tool calls never half-stream.
+            // Once tools have resolved (round >= 1), stream the final response via generateContentStream.
+            if (round === 0) {
+              const { response, model: usedModel } = await generateWithFallback(
+                ai,
+                orderedModels,
+                contents,
+                systemInstruction
+              );
+              activeModel = usedModel;
+
+              const functionCalls = response.functionCalls;
+              if (!functionCalls || functionCalls.length === 0) {
+                const rawText = (response.text?.trim() || 'No response generated.').replace(
+                  /^thought\s*\r?\n/i,
+                  ''
+                );
+                // Emit cleanly in small readable chunks
+                const chunks = rawText.match(/[\s\S]{1,36}(?:\s+|$)/g) ?? [rawText];
+                for (const c of chunks) {
+                  sendEvent({ type: 'token', text: c });
+                }
+                break;
+              }
+
+              for (const fc of functionCalls) {
+                const argDate =
+                  typeof fc.args?.as_of_date === 'string' && fc.args.as_of_date.trim()
+                    ? fc.args.as_of_date
+                    : activeAsOfDate;
+                sendEvent({
+                  type: 'status',
+                  label: liveStatusLabel(fc.name ?? 'tool', argDate),
+                });
+              }
+
+              const modelContent = response.candidates?.[0]?.content;
+              if (modelContent) {
+                contents.push(modelContent);
+              } else {
+                contents.push({
+                  role: 'model',
+                  parts: functionCalls.map((fc) => ({ functionCall: fc })),
+                });
+              }
+
+              const responseParts = await runToolRound(
+                functionCalls,
+                round,
+                activeAsOfDate,
+                toolLogs,
+                proposedTasks
+              );
+              contents.push({ role: 'user', parts: responseParts });
+              continue;
+            }
+
+            // Round >= 1: use generateContentStream with pre-first-chunk fallback
+            const streamResult = await streamTurnWithFallback(
+              ai,
+              orderedModels,
+              contents,
+              systemInstruction,
+              (tokenText) => sendEvent({ type: 'token', text: tokenText })
+            );
+            activeModel = streamResult.model;
+
+            if (streamResult.functionCalls.length > 0) {
+              for (const fc of streamResult.functionCalls) {
+                const argDate =
+                  typeof fc.args?.as_of_date === 'string' && fc.args.as_of_date.trim()
+                    ? fc.args.as_of_date
+                    : activeAsOfDate;
+                sendEvent({
+                  type: 'status',
+                  label: liveStatusLabel(fc.name ?? 'tool', argDate),
+                });
+              }
+
+              contents.push({
+                role: 'model',
+                parts: streamResult.modelParts,
+              });
+
+              const responseParts = await runToolRound(
+                streamResult.functionCalls,
+                round,
+                activeAsOfDate,
+                toolLogs,
+                proposedTasks
+              );
+              contents.push({ role: 'user', parts: responseParts });
+
+              if (round === MAX_ROUNDS - 1) {
+                sendEvent({
+                  type: 'token',
+                  text: 'Reached maximum tool-execution rounds for this turn. Please ask a more specific follow-up.',
+                });
+              }
+              continue;
+            }
+
+            if (!streamResult.emittedTokens) {
+              sendEvent({ type: 'token', text: 'No response generated.' });
+            }
+            break;
+          }
+
+          sendEvent({
+            type: 'done',
+            model: activeModel,
+            as_of_date: activeAsOfDate,
+            tools_used: toolLogs,
+            proposed_tasks: proposedTasks,
+          });
+        } catch (streamErr) {
+          const message =
+            streamErr instanceof Error ? streamErr.message : 'Copilot streaming failed';
+          console.error('[POST /api/copilot SSE] Error:', message);
+          sendEvent({ type: 'error', error: message });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Copilot request failed';

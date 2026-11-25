@@ -26,6 +26,7 @@ interface ChatMessage {
   as_of_date?: string;
   tools_used?: ToolExecutionLog[];
   proposed_tasks?: ProposedTaskPayload[];
+  isStreaming?: boolean;
 }
 
 type ProposalState = 'pending' | 'saving' | 'saved' | 'cancelled';
@@ -182,6 +183,7 @@ export function CopilotDrawer({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [expandedToolMsgIds, setExpandedToolMsgIds] = useState<Record<string, boolean>>({});
   const [proposalStates, setProposalStates] = useState<Record<string, ProposalState>>({});
@@ -209,14 +211,28 @@ export function CopilotDrawer({
     };
 
     const nextMessages = [...messages, userMsg];
-    setMessages(nextMessages);
+    const assistantMsgId = nextMessageId('assistant');
+    setMessages([
+      ...nextMessages,
+      {
+        id: assistantMsgId,
+        role: 'assistant',
+        content: '',
+        as_of_date: asOfDate,
+        isStreaming: true,
+      },
+    ]);
     setInput('');
     setIsSending(true);
+    setStatusLabel(`Connecting to ${asOfDate} snapshot...`);
 
     try {
       const res = await fetch('/api/copilot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify({
           as_of_date: asOfDate,
           messages: nextMessages.map((m) => ({
@@ -225,38 +241,143 @@ export function CopilotDrawer({
           })),
         }),
       });
-      const json = await res.json();
+
+      const contentType = res.headers.get('content-type') ?? '';
       if (!res.ok) {
-        throw new Error(json.error || 'Failed contacting AI Copilot');
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Failed contacting AI Copilot');
       }
 
-      const proposals: ProposedTaskPayload[] = Array.isArray(json.proposed_tasks)
-        ? json.proposed_tasks
-        : [];
+      // Fallback if server returned standard JSON instead of SSE
+      if (contentType.includes('application/json') || !res.body) {
+        const json = await res.json();
+        const proposals: ProposedTaskPayload[] = Array.isArray(json.proposed_tasks)
+          ? json.proposed_tasks
+          : [];
+        if (proposals.length > 0) {
+          setProposalStates((prev) => {
+            const updated = { ...prev };
+            for (const p of proposals) {
+              if (!updated[p.proposal_id]) updated[p.proposal_id] = 'pending';
+            }
+            return updated;
+          });
+        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsgId
+              ? {
+                  ...m,
+                  content: String(json.reply ?? ''),
+                  as_of_date: json.as_of_date ?? asOfDate,
+                  tools_used: Array.isArray(json.tools_used) ? json.tools_used : [],
+                  proposed_tasks: proposals,
+                  isStreaming: false,
+                }
+              : m
+          )
+        );
+        return;
+      }
 
-      if (proposals.length > 0) {
-        setProposalStates((prev) => {
-          const updated = { ...prev };
-          for (const p of proposals) {
-            if (!updated[p.proposal_id]) updated[p.proposal_id] = 'pending';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+
+      const handleSsePayload = (rawData: string) => {
+        const evt = JSON.parse(rawData) as
+          | { type: 'status'; label?: string }
+          | { type: 'token'; text?: string }
+          | {
+              type: 'done';
+              as_of_date?: string;
+              tools_used?: ToolExecutionLog[];
+              proposed_tasks?: ProposedTaskPayload[];
+            }
+          | { type: 'error'; error?: string };
+
+        if (evt.type === 'status' && evt.label) {
+          setStatusLabel(evt.label);
+        } else if (evt.type === 'token' && evt.text) {
+          setStatusLabel(null);
+          const tokenText = evt.text;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId ? { ...m, content: m.content + tokenText } : m
+            )
+          );
+        } else if (evt.type === 'done') {
+          setStatusLabel(null);
+          const proposals: ProposedTaskPayload[] = Array.isArray(evt.proposed_tasks)
+            ? evt.proposed_tasks
+            : [];
+          if (proposals.length > 0) {
+            setProposalStates((prev) => {
+              const updated = { ...prev };
+              for (const p of proposals) {
+                if (!updated[p.proposal_id]) updated[p.proposal_id] = 'pending';
+              }
+              return updated;
+            });
           }
-          return updated;
-        });
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    as_of_date: evt.as_of_date ?? asOfDate,
+                    tools_used: Array.isArray(evt.tools_used) ? evt.tools_used : [],
+                    proposed_tasks: proposals,
+                    isStreaming: false,
+                  }
+                : m
+            )
+          );
+        } else if (evt.type === 'error') {
+          throw new Error(evt.error || 'Copilot streaming error');
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        sseBuffer += decoder.decode(value, { stream: true });
+
+        const events = sseBuffer.split(/\r?\n\r?\n/);
+        sseBuffer = events.pop() ?? '';
+
+        for (const eventBlock of events) {
+          for (const line of eventBlock.split(/\r?\n/)) {
+            if (!line.startsWith('data: ')) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+            handleSsePayload(jsonStr);
+          }
+        }
       }
 
-      const assistantMsg: ChatMessage = {
-        id: nextMessageId('assistant'),
-        role: 'assistant',
-        content: String(json.reply ?? ''),
-        as_of_date: json.as_of_date ?? asOfDate,
-        tools_used: Array.isArray(json.tools_used) ? json.tools_used : [],
-        proposed_tasks: proposals,
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      if (sseBuffer.trim()) {
+        for (const line of sseBuffer.split(/\r?\n/)) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr) handleSsePayload(jsonStr);
+        }
+      }
+
+      // Ensure streaming flag is cleared when stream ends
+      setMessages((prev) =>
+        prev.map((m) => (m.id === assistantMsgId ? { ...m, isStreaming: false } : m))
+      );
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Copilot request failed');
+      setMessages((prev) =>
+        prev
+          .filter((m) => !(m.id === assistantMsgId && m.content.trim() === ''))
+          .map((m) => (m.id === assistantMsgId ? { ...m, isStreaming: false } : m))
+      );
     } finally {
       setIsSending(false);
+      setStatusLabel(null);
     }
   }
 
@@ -452,9 +573,14 @@ export function CopilotDrawer({
                     )}
 
                     {/* Frosted White Assistant Card */}
-                    <div className="rounded-2xl rounded-tl-xs border border-white/80 bg-white/85 px-4 py-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] backdrop-blur-md">
-                      <FormattedResponse content={msg.content} />
-                    </div>
+                    {(msg.content || !msg.isStreaming) && (
+                      <div className="rounded-2xl rounded-tl-xs border border-white/80 bg-white/85 px-4 py-3.5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] backdrop-blur-md">
+                        <FormattedResponse content={msg.content} />
+                        {msg.isStreaming && (
+                          <span className="mt-1 inline-block h-3.5 w-1.5 animate-pulse rounded-xs bg-indigo-500 align-middle" />
+                        )}
+                      </div>
+                    )}
 
                     {/* Elevated Action Confirmation Cards with Emerald Top Accent */}
                     {msg.proposed_tasks && msg.proposed_tasks.length > 0 && (
@@ -571,10 +697,14 @@ export function CopilotDrawer({
             );
           })}
 
-          {isSending && (
-            <div className="flex items-center gap-2 rounded-xl border border-white/80 bg-white/85 px-4 py-3 text-xs text-slate-700 shadow-sm backdrop-blur-md">
-              <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
-              <span>Querying live Supabase snapshot &amp; analyzing...</span>
+          {isSending && statusLabel && (
+            <div className="inline-flex items-center gap-2.5 rounded-xl border border-white/80 bg-white/85 px-3.5 py-2.5 text-xs font-medium text-slate-700 shadow-sm backdrop-blur-md">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+              <span>{statusLabel}</span>
             </div>
           )}
 
