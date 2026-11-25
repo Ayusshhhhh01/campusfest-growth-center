@@ -1,5 +1,7 @@
 # CampusFest Bengaluru — Sponsorship Growth Center
 
+**Live Demo:** https://campusfest-growth-center-fd98.vercel.app/
+
 A full-stack Sponsorship Growth Command Center built for **CampusFest Bengaluru 2025** with **Next.js (App Router, TypeScript, Tailwind CSS), Recharts, Supabase (PostgreSQL), and Google Gemini API Function Calling**.
 
 ---
