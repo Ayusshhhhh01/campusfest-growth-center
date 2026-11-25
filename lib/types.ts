@@ -43,6 +43,7 @@ export interface DashboardOpportunity {
   stage: OpportunityStage;
   reported_value_inr: number;
   cash_collected_inr: number | null;
+  cash_received_at: string | null;
   stage_effective_at: string;
   created_at: string;
 }
@@ -182,6 +183,12 @@ export interface DashboardPayload {
     largest_sponsor: {
       brand_id: string;
       brand_name: string;
+      industry: string;
+      confirmed_deals: number;
+      confirmed_value_inr: number;
+      share_pct: number;
+    } | null;
+    largest_industry: {
       industry: string;
       confirmed_deals: number;
       confirmed_value_inr: number;

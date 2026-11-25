@@ -157,7 +157,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
       const res = await fetch(`/api/opportunities/${oppId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cash_collected_inr: payloadValue }),
+        body: JSON.stringify({ cash_collected_inr: payloadValue, as_of_date }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed saving cash collected');

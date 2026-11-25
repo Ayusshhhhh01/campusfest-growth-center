@@ -4,8 +4,10 @@ import {
   getEarlyWarningSignals,
   getIndustryAndConcentration,
   getSnapshotSummary,
+  loadSnapshotContext,
   queryOpportunities,
 } from '../lib/metrics';
+import { getSupabaseAdmin } from '../lib/supabase';
 
 function formatInr(amount: number | null): string {
   if (amount === null) return 'NULL (Not recorded in source data)';
@@ -96,7 +98,7 @@ async function inspectDate(asOfDate: string) {
   console.log(`  Stalled Negotiations: ${bottlenecks.stalled_negotiations.length}`);
   console.log(`  Signals count: ${warnings.signals.length}`);
 
-  return { summary, channels, o006, o001, o002 };
+  return { summary, channels, warnings, industry, o006, o001, o002 };
 }
 
 async function main() {
@@ -146,12 +148,88 @@ async function main() {
   assertEqual('Beardo O001 stage on 2025-04-20', apr20.o001?.stage, 'partner_confirmed');
   assertEqual('Beardo O002 stage on 2025-04-20', apr20.o002?.stage, 'lost');
 
+  const ews1 = apr20.warnings.signals.find((s) => s.id === 'qualified_meeting_rate');
+  const ews2 = apr20.warnings.signals.find((s) => s.id === 'proposal_to_negotiation');
+  const ews4 = apr20.warnings.signals.find((s) => s.id === 'sponsor_concentration');
+  assertEqual('EWS #1 qualified_meeting_rate (warm only) value_pct', ews1?.value_pct, 75);
+  assertEqual('EWS #1 qualified_meeting_rate status', ews1?.status, 'green');
+  assertEqual('EWS #2 proposal_to_negotiation value_pct', ews2?.value_pct, 84.8);
+  assertEqual('EWS #2 proposal_to_negotiation status', ews2?.status, 'green');
+  assertEqual('EWS #4 sponsor_concentration value_pct', ews4?.value_pct, 24.6);
+  assertEqual('EWS #4 sponsor_concentration status', ews4?.status, 'amber');
+
   const feb28 = await inspectDate('2025-02-28');
   console.log('\nVerifying 2025-02-28 SPEC.md Point-in-Time Rules:');
   assertEqual('target_version on 2025-02-28', feb28.summary.targets.target_version, 'Sponsor launch plan');
   assertEqual('qualified_brands_goal on 2025-02-28', feb28.summary.targets.qualified_brands_goal, 40);
   assertEqual('confirmed_partnerships_goal on 2025-02-28', feb28.summary.targets.confirmed_partnerships_goal, 20);
   assertEqual('O006 stage on 2025-02-28', feb28.o006?.stage, 'partner_confirmed');
+
+  console.log('\nVerifying cash_received_at Point-in-Time Isolation:');
+  const supabase = getSupabaseAdmin();
+  const colCheck = await supabase.from('partner_opportunities').select('cash_received_at').limit(1);
+  if (!colCheck.error) {
+    try {
+      const patchRes = await supabase
+        .from('partner_opportunities')
+        .update({ cash_collected_inr: 200000, cash_received_at: '2025-04-20T23:59:59+05:30' })
+        .eq('opportunity_id', 'O001');
+      if (patchRes.error) {
+        throw new Error(`Failed live O001 cash_received_at patch: ${patchRes.error.message}`);
+      }
+      const [sumApr20, sumFeb28] = await Promise.all([
+        getSnapshotSummary('2025-04-20'),
+        getSnapshotSummary('2025-02-28'),
+      ]);
+      assertEqual(
+        'live cash_collected_inr on 2025-04-20 (received 2025-04-20)',
+        sumApr20.financials.verified_cash_collected_inr,
+        200000
+      );
+      assertEqual(
+        'live cash_collected_inr on 2025-02-28 (no future receipt leakage)',
+        sumFeb28.financials.verified_cash_collected_inr,
+        null
+      );
+    } finally {
+      await supabase
+        .from('partner_opportunities')
+        .update({ cash_collected_inr: null, cash_received_at: null })
+        .eq('opportunity_id', 'O001');
+    }
+  } else {
+    console.log(
+      '  [INFO] Live DB missing cash_received_at column yet; testing SnapshotContext PIT logic (run ALTER TABLE partner_opportunities ADD COLUMN IF NOT EXISTS cash_received_at TIMESTAMPTZ; in Supabase SQL Editor).'
+    );
+    const [ctxApr20, ctxFeb28] = await Promise.all([
+      loadSnapshotContext('2025-04-20'),
+      loadSnapshotContext('2025-02-28'),
+    ]);
+    ctxApr20.opportunities = ctxApr20.opportunities.map((o) =>
+      o.opportunity_id === 'O001'
+        ? { ...o, cash_collected_inr: 200000, cash_received_at: '2025-04-20T23:59:59+05:30' }
+        : o
+    );
+    ctxFeb28.opportunities = ctxFeb28.opportunities.map((o) =>
+      o.opportunity_id === 'O001'
+        ? { ...o, cash_collected_inr: 200000, cash_received_at: '2025-04-20T23:59:59+05:30' }
+        : o
+    );
+    const [sumApr20, sumFeb28] = await Promise.all([
+      getSnapshotSummary('2025-04-20', ctxApr20),
+      getSnapshotSummary('2025-02-28', ctxFeb28),
+    ]);
+    assertEqual(
+      'PIT cash_collected_inr on 2025-04-20 (received 2025-04-20)',
+      sumApr20.financials.verified_cash_collected_inr,
+      200000
+    );
+    assertEqual(
+      'PIT cash_collected_inr on 2025-02-28 (no future receipt leakage)',
+      sumFeb28.financials.verified_cash_collected_inr,
+      null
+    );
+  }
 }
 
 main().catch((err) => {

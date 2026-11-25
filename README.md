@@ -11,7 +11,7 @@ A full-stack Sponsorship Growth Command Center built for **CampusFest Bengaluru 
 CampusFest 2025 (Bengaluru, 12–13 April 2025) closed its sponsorship window with **60 qualified brands** (beating the revised goal of 55) but **24 confirmed partnerships** (missing the revised goal of 28), representing **₹22,40,000** in reported contract value (`₹20,00,000` cash across 20 deals + `₹2,40,000` in-kind across 4 deals).
 
 - **Core Growth Thesis:** Sponsorship conversion is 100% driven by warm pathways (`introduction` + `web_inbound`), yet 87.0% of outreach effort (322 cold email + LinkedIn attempts) produced **₹0** in net confirmed revenue by 20 April 2025.
-- **Pre-Fest Cash Target Envelope:** **₹27.2L Base** / **₹63.4L Stretch** incremental sponsorship targets across 5 RICE-prioritized strategic bets, enforced by a 5-signal Early Warning System and 48-hour Qualification SLA Monitor.
+- **Pre-Fest Cash Target Envelope:** **₹27.2L Base** / **₹63.4L Stretch** total pre-fest cash collected targets (with **₹4.5L** base execution budget) across the ranked strategic bets and status-quo cut, enforced by a 5-signal Early Warning System and 48-hour Qualification SLA Monitor.
 - **Live & Resettable Demo:** Every deal edit, stage transition, cash receipt log, activation approval, and growth task persists directly to Supabase PostgreSQL and immediately recalculates all dashboard KPIs and AI Copilot answers—with a 1-click **Reset to Baseline** button restoring `Sponsor Dataset.xlsx` cleanly.
 
 ---
@@ -29,12 +29,18 @@ To prevent executive decision errors, the system strictly separates verifiable f
 - **Target Plan Shift:** `Sponsor launch plan` (`40` qualified / `20` confirmed) was active prior to `2025-03-15 09:00 IST`; `Sponsor revised plan` (`55` qualified / `28` confirmed) took effect on `2025-03-15 09:00 IST`.
 - **Pipeline Leakage:** `14` brands replied positively without ever reaching `qualified` status; `15` brands have opportunities without being `qualified`; `8` opportunities remain in `negotiating` as of `2025-04-20`.
 - **Concentration:** Largest single sponsor at baseline is `Beardo` (`A001`, `O001` confirmed `₹2,00,000`, `O002` lost) at `8.9%` of total confirmed value.
-- **Missing Financial / Causal Fields:** `cash_collected_inr` is `NULL` for all baseline source rows; no marketing spend or CAC figures exist in the workbook; the 3 `sponsor_activations` (`L001` Beardo, `L002` Mosaic Mobility, `L003` Maple Devices) record post-confirmation associations and not causal attendee uplift.
+- **Missing Financial / Causal Fields:** `cash_collected_inr` and `cash_received_at` are `NULL` for all baseline source rows; no marketing spend or CAC figures exist in the workbook; the 3 `sponsor_activations` (`L001` Beardo, `L002` Mosaic Mobility, `L003` Maple Devices) record post-confirmation associations and not causal attendee uplift.
 
-### Model Assumptions (Strategy & Early Warning Layer)
-- **Base / Stretch Cash Targets (`₹27.2L` / `₹63.4L`):** Planning envelopes modeled across the 5 ranked bets assuming SDR reallocation from cold email (`SC01`/`SC06`) to warm referrals (`SC02`/`SC05`), web inbound fast-track (`SC04`), and 48h SLA rescue.
-- **RICE Scoring Inputs:** Reach, Impact, Confidence, and Effort scores reflect team capacity assumptions for CampusFest Bengaluru.
-- **Early Warning Thresholds:** Qualified Meeting Rate `<30%` Red (`n >= 10`), Proposal → Negotiation `<25%` Red, Advance Collection `<70%` Amber/Red (or `"No bank receipt data"` when unlogged), Sponsor Concentration `>30%` Amber / `>40%` Red, and unapproved activations at `T-14` Red.
+### External Sources & Explicit Assumptions (Planning Layer — Not Sourced Workbook Facts)
+- **Total Pre-Fest Cash Collected Targets (`₹27.2L` Base / `₹63.4L` Stretch, `₹4.5L` Base Budget):** Planning targets modeled across the ranked bets assuming SDR capacity shifts out of cold outbound into warm referral loops, cash-first closing sprints, and high-intent experiential formats.
+- **Bengaluru Market & Procurement Benchmarks:** Flagship Bengaluru campus festival footfall assumptions (**15K–25K** attendees) and enterprise vs. startup procurement lead-time assumptions (Mumbai agency **45–90 day** approval cycles vs. Bengaluru startup founder **<2-week** sign-off) are external planning benchmarks used for bet sizing and SLA design, not figures derived from `Sponsor Dataset.xlsx`.
+- **RICE Scoring Inputs:** Reach, Impact, Confidence, and Effort inputs (`(R × I × C) ÷ E`) reflect CampusFest Bengaluru team capacity assumptions.
+- **Early Warning Thresholds (Slide 3):**
+  - **EWS #1 Qualified Meeting Rate (Warm Channels Only):** Warm meetings ÷ warm attempts (`introduction` + `web_inbound`; baseline `36/48 = 75.0%`), `Green ≥65%`, `Amber 30%–64%`, `Red <30%` (`n ≥ 10`).
+  - **EWS #2 Proposal → Negotiation Rate:** `Green ≥80%`, `Amber 25%–79%`, `Red <25%` (baseline `39/46 = 84.8%` Green).
+  - **EWS #3 Advance Collection Rate:** Point-in-time `cash_collected_inr` where `cash_received_at <= cutoff`, `<70%` Amber/Red or `"No bank receipt data"` if unlogged.
+  - **EWS #4 Sponsor & Category Concentration:** Top sponsor (`8.9%` Beardo) and top category (`24.6%` Food & Beverage) evaluated against `Green ≤20%`, `Amber >20%–40%`, `Red >40%`.
+  - **EWS #5 Activation Readiness:** Unapproved activation plans at `T-14` Red.
 
 ---
 
@@ -54,16 +60,17 @@ Touches, contacts, brands, and opportunities are never mixed or summed across hi
 | Opportunities | `58` | Distinct `opportunity_id` created `<= cutoff` (e.g., Beardo has `O001` + `O002`) |
 | Confirmed Partnerships | `24` (`41.4%` of opps) | Latest `opportunity_history` stage = `partner_confirmed` (Goal: `28`) |
 
-### 5 Ranked Bets (RICE = `(Reach × Impact × Confidence) / Effort`)
+### Ranked Bets & Status Quo Cut (RICE = `(Reach × Impact × Confidence) ÷ Effort`)
 
-| Rank | Bet / Lever | Decision | RICE | Base Target | Stretch Target |
-| :---: | :--- | :---: | :---: | :---: | :---: |
-| **#1** | Warm Partner & Creator Network Introductions (`SC02`, `SC05`) | **Double Down** | `92` | `₹14.0L` | `₹30.0L` |
-| **#2** | Web Inbound Partner Interest Fast-Track (`SC04`) | **Double Down** | `84` | `₹6.5L` | `₹15.0L` |
-| **#3** | 48-Hour Qualification SLA & Stalled Deal Rescue | **Double Down** | `76` | `₹5.2L` | `₹13.4L` |
-| **#4** | LinkedIn Executive Outreach (`SC03`) | **Cap** | `34` | `₹1.5L` | `₹5.0L` |
-| **#5** | Cold Email Volume Blasts (`SC01`, `SC06`) | **Kill** | `12` | `₹0.0L` | `₹0.0L` |
-| — | **Total Incremental Target Envelope** | — | — | **`₹27.2L`** | **`₹63.4L`** |
+| Rank | Bet / Lever | RICE | Pre-Fest Cash (Base / Stretch) | Budget | Verdict |
+| :---: | :--- | :---: | :---: | :---: | :--- |
+| **#1** | Warm Intro Flywheel + "Competitor FOMO" Exclusivity | `30.0` (`75 × 3 × 0.8 ÷ 6`) | `₹9.5L` / `₹19.0L` | `₹1.5L` | **Double Down (Priority #1)** |
+| **#2** | Close Sprint + Cash-First Terms | `27.2` (`51 × 2 × 0.8 ÷ 3`) | `₹10.7L` / `₹33.8L` | `₹0.5L` | **Double Down (Revenue Multiplier)** |
+| **#3** | ROI-First Inbound Magnet + 180-Sec UI Roast Hiring Arena | `10.8` (`45 × 2 × 0.6 ÷ 5`) | `₹4.6L` / `₹7.0L` | `₹1.5L` | **Double Down (Hard Kill Check at Wk 3)** |
+| **#4** | 48-Hour Gen-Z UX & Blind Taste-Test Lab (₹2L) | `2.0` (`10 × 2 × 0.4 ÷ 4`) | `₹2.4L` / `₹3.6L` | `₹1.0L` | **Pilot / Cap (Max 2–3 Slots)** |
+| **#5** | Fest Commercial Footage Licensing | `0.2` (`5 × 1 × 0.2 ÷ 6`) | `₹0` / `₹0` | `₹0` | **Reject (Legal & Cash Timing Risk)** |
+| **K** | Status Quo Cut: Cold Email & LinkedIn Outbound | `—` (`0 deals / 322 touches; no spend data for ROI`) | `₹0` *(Frees 87% capacity)* | `₹0` | **Kill Immediately** |
+| — | **Total Pre-Fest Cash Collected Envelope** | — | **`₹27.2L` / `₹63.4L`** | **`₹4.5L`** | — |
 
 ---
 

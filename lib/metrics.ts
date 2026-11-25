@@ -115,6 +115,7 @@ export interface PartnerOpportunityRow {
   deal_type: DealType;
   reported_value_inr: number;
   cash_collected_inr: number | null;
+  cash_received_at: string | null;
   created_at: string;
 }
 
@@ -296,6 +297,7 @@ export async function loadSnapshotContext(asOfDate?: string): Promise<SnapshotCo
       ...o,
       reported_value_inr: Number(o.reported_value_inr ?? 0),
       cash_collected_inr: o.cash_collected_inr === null ? null : Number(o.cash_collected_inr),
+      cash_received_at: o.cash_received_at ?? null,
     }));
 
   const allOpportunityHistoryUpToCutoff = dedupeRowsById(ohRaw, (r) => r.history_id)
@@ -333,6 +335,13 @@ export async function loadSnapshotContext(asOfDate?: string): Promise<SnapshotCo
     latestOpportunityHistory,
     activations,
   };
+}
+
+function isCashReceivedByCutoff(opp: PartnerOpportunityRow, cutoffMs: number): boolean {
+  if (opp.cash_collected_inr === null) return false;
+  if (!opp.cash_received_at) return false;
+  const receivedMs = toMs(opp.cash_received_at);
+  return !Number.isNaN(receivedMs) && receivedMs <= cutoffMs;
 }
 
 function getEffectiveOpportunityValue(
@@ -416,7 +425,7 @@ export async function getSnapshotSummary(asOfDate?: string, preloadedCtx?: Snaps
       totalPipelineProposedInr += val;
     }
 
-    if (opp.cash_collected_inr !== null) {
+    if (isCashReceivedByCutoff(opp, ctx.cutoff_ms) && opp.cash_collected_inr !== null) {
       cashReceiptsLoggedCount += 1;
       cashCollectedSum += opp.cash_collected_inr;
     }
@@ -781,6 +790,8 @@ export async function getIndustryAndConcentration(
     .sort((a, b) => b.confirmed_value_inr - a.confirmed_value_inr);
 
   const largestSponsor = sponsors[0] ?? null;
+  const largestIndustry = industries[0] ?? null;
+  const maxSharePct = Math.max(largestSponsor?.share_pct ?? 0, largestIndustry?.share_pct ?? 0);
 
   return {
     as_of_date: ctx.as_of_date,
@@ -788,10 +799,11 @@ export async function getIndustryAndConcentration(
     industries,
     top_sponsors: sponsors.slice(0, 10),
     largest_sponsor: largestSponsor,
+    largest_industry: largestIndustry,
     concentration_risk_level:
-      largestSponsor && largestSponsor.share_pct > 40
+      maxSharePct > 40
         ? ('red' as SignalStatus)
-        : largestSponsor && largestSponsor.share_pct > 30
+        : maxSharePct > 20
           ? ('amber' as SignalStatus)
           : ('green' as SignalStatus),
   };
@@ -805,15 +817,26 @@ export async function getEarlyWarningSignals(
   const summary = await getSnapshotSummary(ctx.as_of_date, ctx);
   const concentration = await getIndustryAndConcentration(ctx.as_of_date, ctx);
 
-  // 1. Qualified Meeting Rate (<30% Red, requires n >= 10)
-  const attempts = summary.populations.attempts;
-  const meetingsHeld = ctx.interactions.filter((i) => i.event_type === 'meeting_held').length;
+  // 1. Qualified Meeting Rate — Warm channels only (introduction, web_inbound)
+  // Green >=65%, Amber 30%-64%, Red <30% (requires n >= 10)
+  const warmInteractions = ctx.interactions.filter(
+    (i) => i.channel === 'introduction' || i.channel === 'web_inbound'
+  );
+  const warmAttemptIds = new Set(warmInteractions.map((i) => i.attempt_id));
+  const warmAttempts = warmAttemptIds.size;
+  const warmMeetingsHeld = warmInteractions.filter((i) => i.event_type === 'meeting_held').length;
   const meetingRatePct =
-    attempts > 0 ? Number(((meetingsHeld / attempts) * 100).toFixed(1)) : 0;
+    warmAttempts > 0 ? Number(((warmMeetingsHeld / warmAttempts) * 100).toFixed(1)) : 0;
   const meetingStatus: SignalStatus =
-    attempts < 10 ? 'amber' : meetingRatePct < 30 ? 'red' : 'green';
+    warmAttempts < 10
+      ? 'amber'
+      : meetingRatePct >= 65
+        ? 'green'
+        : meetingRatePct >= 30
+          ? 'amber'
+          : 'red';
 
-  // 2. Proposal -> Negotiation Rate (<25% Red)
+  // 2. Proposal -> Negotiation Rate (Green >=80%, Amber 25%-79%, Red <25%)
   const proposalOpps = new Set<string>();
   const negotiatingOpps = new Set<string>();
   for (const h of ctx.allOpportunityHistoryUpToCutoff) {
@@ -827,7 +850,13 @@ export async function getEarlyWarningSignals(
   const proposalToNegPct =
     proposalOpps.size > 0 ? Number(((progressedToNeg / proposalOpps.size) * 100).toFixed(1)) : 0;
   const proposalToNegStatus: SignalStatus =
-    proposalOpps.size === 0 ? 'amber' : proposalToNegPct < 25 ? 'red' : 'green';
+    proposalOpps.size === 0
+      ? 'amber'
+      : proposalToNegPct >= 80
+        ? 'green'
+        : proposalToNegPct >= 25
+          ? 'amber'
+          : 'red';
 
   // 3. Advance Collection Rate (<70% of due Amber/Red, or "No bank receipt data" if unlogged)
   const confirmedCashVal = summary.financials.confirmed_cash_value_inr;
@@ -845,8 +874,10 @@ export async function getEarlyWarningSignals(
           ? 'amber'
           : 'green';
 
-  // 4. Sponsor Concentration (>30% Amber, >40% Red)
-  const largestSharePct = concentration.largest_sponsor?.share_pct ?? 0;
+  // 4. Sponsor & Category Concentration (Green <=20%, Amber >20%-40%, Red >40%)
+  const largestSponsorSharePct = concentration.largest_sponsor?.share_pct ?? 0;
+  const largestIndustrySharePct = concentration.largest_industry?.share_pct ?? 0;
+  const maxConcentrationSharePct = Math.max(largestSponsorSharePct, largestIndustrySharePct);
   const concentrationStatus = concentration.concentration_risk_level;
 
   // 5. Activation Readiness (Unapproved plans at T-14)
@@ -867,10 +898,10 @@ export async function getEarlyWarningSignals(
         name: 'Qualified Meeting Rate',
         status: meetingStatus,
         value_pct: meetingRatePct,
-        numerator: meetingsHeld,
-        denominator: attempts,
-        threshold_rule: '<30% Red (requires n >= 10)',
-        detail: `${meetingsHeld} held meetings across ${attempts} outreach attempts (${meetingRatePct}%).`,
+        numerator: warmMeetingsHeld,
+        denominator: warmAttempts,
+        threshold_rule: 'Warm channels: Green ≥65%, Amber 30%–64%, Red <30% (n ≥ 10)',
+        detail: `${warmMeetingsHeld} warm meetings held across ${warmAttempts} warm attempts (${meetingRatePct}%).`,
       },
       {
         id: 'proposal_to_negotiation',
@@ -879,7 +910,7 @@ export async function getEarlyWarningSignals(
         value_pct: proposalToNegPct,
         numerator: progressedToNeg,
         denominator: proposalOpps.size,
-        threshold_rule: '<25% Red',
+        threshold_rule: 'Green ≥80%, Amber 25%–79%, Red <25%',
         detail: `${progressedToNeg} of ${proposalOpps.size} proposals advanced to negotiating (${proposalToNegPct}%).`,
       },
       {
@@ -897,15 +928,19 @@ export async function getEarlyWarningSignals(
       },
       {
         id: 'sponsor_concentration',
-        name: 'Sponsor Concentration',
+        name: 'Sponsor & Category Concentration',
         status: concentrationStatus,
-        value_pct: largestSharePct,
-        numerator: concentration.largest_sponsor?.confirmed_value_inr ?? 0,
+        value_pct: maxConcentrationSharePct,
+        numerator:
+          largestIndustrySharePct >= largestSponsorSharePct
+            ? (concentration.largest_industry?.confirmed_value_inr ?? 0)
+            : (concentration.largest_sponsor?.confirmed_value_inr ?? 0),
         denominator: concentration.total_confirmed_value_inr,
-        threshold_rule: '>30% Amber, >40% Red',
-        detail: concentration.largest_sponsor
-          ? `Largest sponsor ${concentration.largest_sponsor.brand_name} (${concentration.largest_sponsor.brand_id}) holds ${largestSharePct}% of confirmed value.`
-          : 'No confirmed sponsors yet.',
+        threshold_rule: 'Top sponsor or category: Green ≤20%, Amber >20%–40%, Red >40%',
+        detail:
+          concentration.largest_sponsor && concentration.largest_industry
+            ? `Top sponsor: ${concentration.largest_sponsor.brand_name} (${concentration.largest_sponsor.brand_id}) at ${largestSponsorSharePct}%; top category: ${concentration.largest_industry.industry} at ${largestIndustrySharePct}% of confirmed value.`
+            : 'No confirmed sponsors yet.',
       },
       {
         id: 'activation_readiness',
@@ -1062,7 +1097,12 @@ export async function queryOpportunities(
         deal_type: opp.deal_type,
         stage,
         reported_value_inr: valueInr,
-        cash_collected_inr: opp.cash_collected_inr,
+        cash_collected_inr: isCashReceivedByCutoff(opp, ctx.cutoff_ms)
+          ? opp.cash_collected_inr
+          : null,
+        cash_received_at: isCashReceivedByCutoff(opp, ctx.cutoff_ms)
+          ? opp.cash_received_at
+          : null,
         stage_effective_at: latest?.effective_at ?? opp.created_at,
         created_at: opp.created_at,
       };

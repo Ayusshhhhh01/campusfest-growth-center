@@ -747,7 +747,7 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
         <div className="glass-card p-6">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold tracking-tight text-slate-900">
-              Sponsor Concentration
+              Sponsor &amp; Category Concentration
             </h2>
             <span
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums ${
@@ -762,26 +762,48 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
               {concRisk === 'red'
                 ? 'High Risk (>40%)'
                 : concRisk === 'amber'
-                  ? 'Watch (>30%)'
-                  : 'Diversified (≤30%)'}
+                  ? 'Watch (>20%)'
+                  : 'Diversified (≤20%)'}
             </span>
           </div>
 
           {largest ? (
-            <div className="mt-4 rounded-xl border border-white/80 bg-white/60 p-3.5 shadow-2xs tabular-nums">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                Largest Single Sponsor
+            <div className="mt-4 space-y-2.5">
+              <div className="rounded-xl border border-white/80 bg-white/60 p-3.5 shadow-2xs tabular-nums">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Largest Single Sponsor
+                </div>
+                <div className="mt-1.5 flex items-baseline justify-between">
+                  <span className="text-sm font-semibold text-slate-900">
+                    {largest.brand_name}{' '}
+                    <span className="font-mono text-xs text-slate-500">({largest.brand_id})</span>
+                  </span>
+                  <span className="text-xl font-bold text-indigo-700">{largest.share_pct}%</span>
+                </div>
+                <div className="mt-0.5 text-xs text-slate-600">
+                  {formatInr(largest.confirmed_value_inr)} across {largest.confirmed_deals} deal(s)
+                </div>
               </div>
-              <div className="mt-1.5 flex items-baseline justify-between">
-                <span className="text-sm font-semibold text-slate-900">
-                  {largest.brand_name}{' '}
-                  <span className="font-mono text-xs text-slate-500">({largest.brand_id})</span>
-                </span>
-                <span className="text-xl font-bold text-indigo-700">{largest.share_pct}%</span>
-              </div>
-              <div className="mt-0.5 text-xs text-slate-600">
-                {formatInr(largest.confirmed_value_inr)} across {largest.confirmed_deals} deal(s)
-              </div>
+
+              {industry_concentration.largest_industry && (
+                <div className="rounded-xl border border-white/80 bg-white/60 p-3 shadow-2xs tabular-nums">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    Top Industry Category
+                  </div>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="text-xs font-semibold text-slate-900">
+                      {industry_concentration.largest_industry.industry}
+                    </span>
+                    <span className="text-base font-bold text-amber-700">
+                      {industry_concentration.largest_industry.share_pct}%
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600">
+                    {formatInr(industry_concentration.largest_industry.confirmed_value_inr)} across{' '}
+                    {industry_concentration.largest_industry.confirmed_deals} deal(s)
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="mt-3 text-xs text-slate-500">No confirmed sponsors yet.</p>

@@ -131,7 +131,7 @@ export function HeaderBar({
                     aria-label="Snapshot date (IST)"
                     value={asOfDate}
                     min="2025-01-15"
-                    max="2025-04-30"
+                    max="2025-04-20"
                     onChange={(e) => {
                       if (e.target.value) onDateChange(e.target.value);
                     }}

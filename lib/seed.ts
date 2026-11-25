@@ -288,6 +288,7 @@ export function loadBaselineFromWorkbook(xlsxPath?: string) {
       deal_type: String(r.support_type),
       reported_value_inr: reportedValue,
       // Explicitly NULL for all baseline source rows: reported INR is not bank receipt.
+      // cash_received_at defaults to NULL in PostgreSQL for all baseline rows.
       cash_collected_inr: null as number | null,
       created_at: parseExcelIstTimestamp(r.created_at),
     };

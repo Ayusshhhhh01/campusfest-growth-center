@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS partner_opportunities (
   deal_type text NOT NULL CHECK (deal_type IN ('cash', 'in_kind')),
   reported_value_inr numeric NOT NULL DEFAULT 0,
   cash_collected_inr numeric NULL,
+  cash_received_at timestamptz NULL,
   created_at timestamptz NOT NULL
 );
 

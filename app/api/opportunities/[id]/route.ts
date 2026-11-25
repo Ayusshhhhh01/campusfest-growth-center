@@ -63,6 +63,7 @@ export async function PATCH(
     if (body.cash_collected_inr !== undefined) {
       if (body.cash_collected_inr === null) {
         oppUpdates.cash_collected_inr = null;
+        oppUpdates.cash_received_at = null;
       } else {
         const cashVal = Number(body.cash_collected_inr);
         if (!Number.isFinite(cashVal) || cashVal < 0) {
@@ -72,6 +73,9 @@ export async function PATCH(
           );
         }
         oppUpdates.cash_collected_inr = cashVal;
+        oppUpdates.cash_received_at = body.as_of_date
+          ? `${normalizeAsOfDate(body.as_of_date)}T23:59:59+05:30`
+          : new Date().toISOString();
       }
     }
 

@@ -21,81 +21,97 @@ interface StrategyTabProps {
 }
 
 interface StrategyBet {
-  rank: number;
+  rank: string;
   title: string;
   campaigns: string;
-  decision: 'Double Down' | 'Pilot / Cap' | 'Reject / Kill';
-  riceScore: number;
+  decisionCategory: 'Double Down' | 'Pilot / Cap' | 'Reject / Kill';
+  verdictLabel: string;
+  riceScore: string;
   riceFormula: string;
   baseTargetLakhs: number;
   stretchTargetLakhs: number;
-  rationale: string;
+  budgetDisplay: string;
+  cashDisplay?: string;
 }
 
 const RANKED_BETS: StrategyBet[] = [
   {
-    rank: 1,
-    title: 'Warm Partner & Creator Network Introductions',
+    rank: '#1',
+    title: 'Warm Intro Flywheel + "Competitor FOMO" Exclusivity',
     campaigns: 'SC02, SC05',
-    decision: 'Double Down',
-    riceScore: 92,
-    riceFormula: 'R: 30 • I: 3.0 • C: 95% • E: 1.0',
-    baseTargetLakhs: 14.0,
-    stretchTargetLakhs: 30.0,
-    rationale:
-      'Delivers 17 of 24 baseline confirmed deals (₹15.7L) from just 30 attempts (56.7% deal yield). Expand alumni & creator referral pods.',
+    decisionCategory: 'Double Down',
+    verdictLabel: 'Double Down (Priority #1)',
+    riceScore: '30.0',
+    riceFormula: '75 × 3 × 0.8 ÷ 6',
+    baseTargetLakhs: 9.5,
+    stretchTargetLakhs: 19.0,
+    budgetDisplay: '₹1.5L',
   },
   {
-    rank: 2,
-    title: 'Web Inbound Partner Interest Fast-Track',
-    campaigns: 'SC04',
-    decision: 'Double Down',
-    riceScore: 84,
-    riceFormula: 'R: 25 • I: 2.5 • C: 90% • E: 0.7',
-    baseTargetLakhs: 6.5,
-    stretchTargetLakhs: 15.0,
-    rationale:
-      '7 confirmed deals (₹6.7L) from 18 inbound submissions (38.9% deal yield). Automate 24h discovery scheduling on form submit.',
-  },
-  {
-    rank: 3,
-    title: '48-Hour Qualification SLA & Stalled Deal Rescue',
+    rank: '#2',
+    title: 'Close Sprint + Cash-First Terms',
     campaigns: 'Pipeline Hygiene',
-    decision: 'Double Down',
-    riceScore: 76,
-    riceFormula: 'R: 22 • I: 2.0 • C: 85% • E: 0.5',
-    baseTargetLakhs: 5.2,
-    stretchTargetLakhs: 13.4,
-    rationale:
-      '14 positive-reply brands never completed qualification and 8 deals sit in negotiating. Enforcing SLA unlocks existing warm demand.',
+    decisionCategory: 'Double Down',
+    verdictLabel: 'Double Down (Revenue Multiplier)',
+    riceScore: '27.2',
+    riceFormula: '51 × 2 × 0.8 ÷ 3',
+    baseTargetLakhs: 10.7,
+    stretchTargetLakhs: 33.8,
+    budgetDisplay: '₹0.5L',
   },
   {
-    rank: 4,
-    title: 'LinkedIn Executive Outreach',
-    campaigns: 'SC03',
-    decision: 'Pilot / Cap',
-    riceScore: 34,
-    riceFormula: 'R: 54 • I: 1.0 • C: 50% • E: 0.8',
-    baseTargetLakhs: 1.5,
-    stretchTargetLakhs: 5.0,
-    rationale:
-      '25.9% positive reply rate across 54 attempts, but only 1 early confirmed deal (O006) which later withdrew. Cap to warm mutual-connects.',
+    rank: '#3',
+    title: 'ROI-First Inbound Magnet + 180-Sec UI Roast Hiring Arena',
+    campaigns: 'SC04',
+    decisionCategory: 'Double Down',
+    verdictLabel: 'Double Down (Hard Kill Check at Wk 3)',
+    riceScore: '10.8',
+    riceFormula: '45 × 2 × 0.6 ÷ 5',
+    baseTargetLakhs: 4.6,
+    stretchTargetLakhs: 7.0,
+    budgetDisplay: '₹1.5L',
   },
   {
-    rank: 5,
-    title: 'Cold Email Volume Blasts',
-    campaigns: 'SC01, SC06',
-    decision: 'Reject / Kill',
-    riceScore: 12,
-    riceFormula: 'R: 268 • I: 0.25 • C: 40% • E: 2.2',
-    baseTargetLakhs: 0.0,
-    stretchTargetLakhs: 0.0,
-    rationale:
-      '268 attempts (72.4% of total outreach volume) produced ₹0 confirmed sponsorship. Reallocate SDR hours directly to Bets 1–3.',
+    rank: '#4',
+    title: '48-Hour Gen-Z UX & Blind Taste-Test Lab (₹2L)',
+    campaigns: 'Experiential Pilot',
+    decisionCategory: 'Pilot / Cap',
+    verdictLabel: 'Pilot / Cap (Max 2–3 Slots)',
+    riceScore: '2.0',
+    riceFormula: '10 × 2 × 0.4 ÷ 4',
+    baseTargetLakhs: 2.4,
+    stretchTargetLakhs: 3.6,
+    budgetDisplay: '₹1.0L',
+  },
+  {
+    rank: '#5',
+    title: 'Fest Commercial Footage Licensing',
+    campaigns: 'Media Rights',
+    decisionCategory: 'Reject / Kill',
+    verdictLabel: 'Reject (Legal & Cash Timing Risk)',
+    riceScore: '0.2',
+    riceFormula: '5 × 1 × 0.2 ÷ 6',
+    baseTargetLakhs: 0,
+    stretchTargetLakhs: 0,
+    budgetDisplay: '₹0',
+    cashDisplay: '₹0 / ₹0',
+  },
+  {
+    rank: 'K',
+    title: 'Status Quo Cut: Cold Email & LinkedIn Outbound',
+    campaigns: 'SC01, SC03, SC06',
+    decisionCategory: 'Reject / Kill',
+    verdictLabel: 'Kill Immediately',
+    riceScore: '—',
+    riceFormula: '0 deals / 322 touches (no spend data for ROI)',
+    baseTargetLakhs: 0,
+    stretchTargetLakhs: 0,
+    budgetDisplay: '₹0',
+    cashDisplay: '₹0 (Frees 87% capacity)',
   },
 ];
 
-const DECISION_BADGE: Record<StrategyBet['decision'], string> = {
+const DECISION_BADGE: Record<StrategyBet['decisionCategory'], string> = {
   'Double Down': 'bg-emerald-50/90 text-emerald-700 ring-1 ring-emerald-200/80',
   'Pilot / Cap': 'bg-amber-50/90 text-amber-800 ring-1 ring-amber-200/80',
   'Reject / Kill': 'bg-rose-50/90 text-rose-700 ring-1 ring-rose-200/80',
@@ -309,16 +325,16 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
         </div>
       </section>
 
-      {/* 5 Ranked CampusFest Bengaluru Strategy Bets */}
+      {/* Ranked CampusFest Bengaluru Strategy Bets */}
       <section className="glass-card p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-slate-900">
-              5 Ranked Strategy Bets (CampusFest Bengaluru)
+              Ranked Strategy Bets &amp; Status Quo Cut (CampusFest Bengaluru)
             </h2>
             <p className="mt-0.5 text-xs text-slate-600">
-              Prioritized by RICE score with incremental cash targets and clear Double Down / Cap /
-              Kill allocation calls
+              Total pre-fest cash collected targets ranked by RICE score with explicit budget and
+              Double Down / Pilot / Reject / Kill verdicts
             </p>
           </div>
 
@@ -331,8 +347,11 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
               <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
               Stretch <strong className="font-bold text-indigo-950">₹63.4L</strong>
             </span>
+            <span className="glass-pill inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-medium text-slate-700">
+              Base Budget <strong className="font-bold text-slate-900">₹4.5L</strong>
+            </span>
             <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200/80 bg-emerald-50/80 px-3 py-1.5 font-medium text-emerald-800 backdrop-blur-md">
-              Confirmed{' '}
+              Reported{' '}
               <strong className="font-bold">
                 {formatLakhs(summary.financials.confirmed_reported_value_inr)}
               </strong>
@@ -346,31 +365,21 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
               <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <th className="px-3.5 py-3">Rank</th>
                 <th className="px-3.5 py-3">Bet / Lever</th>
-                <th className="px-3.5 py-3">Decision</th>
                 <th className="px-3.5 py-3 text-right">RICE</th>
-                <th className="px-3.5 py-3 text-right">Base Target</th>
-                <th className="px-3.5 py-3 text-right">Stretch Target</th>
-                <th className="px-3.5 py-3">Evidence &amp; Execution Focus</th>
+                <th className="px-3.5 py-3 text-right">Pre-Fest Cash (Base / Stretch)</th>
+                <th className="px-3.5 py-3 text-right">Budget</th>
+                <th className="px-3.5 py-3">Verdict</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/50">
               {RANKED_BETS.map((bet) => (
                 <tr key={bet.rank} className="transition hover:bg-indigo-50/40">
-                  <td className="px-3.5 py-3.5 font-mono font-bold text-slate-500">
-                    #{bet.rank}
+                  <td className="px-3.5 py-3.5 font-mono font-bold text-slate-600">
+                    {bet.rank}
                   </td>
                   <td className="px-3.5 py-3.5">
                     <div className="font-semibold text-slate-900">{bet.title}</div>
                     <div className="font-mono text-[11px] text-slate-500">{bet.campaigns}</div>
-                  </td>
-                  <td className="px-3.5 py-3.5">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                        DECISION_BADGE[bet.decision]
-                      }`}
-                    >
-                      {bet.decision}
-                    </span>
                   </td>
                   <td className="px-3.5 py-3.5 text-right">
                     <span className="inline-flex items-center rounded-lg border border-white/80 bg-white/85 px-2 py-0.5 font-mono text-xs font-bold text-slate-900 shadow-2xs">
@@ -378,14 +387,28 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
                     </span>
                     <div className="mt-0.5 text-[10px] text-slate-500">{bet.riceFormula}</div>
                   </td>
-                  <td className="px-3.5 py-3.5 text-right font-mono font-semibold text-slate-800">
-                    ₹{bet.baseTargetLakhs.toFixed(1)}L
+                  <td className="px-3.5 py-3.5 text-right font-mono font-semibold text-slate-900">
+                    {bet.cashDisplay ? (
+                      <span className="text-slate-600">{bet.cashDisplay}</span>
+                    ) : (
+                      <span>
+                        ₹{bet.baseTargetLakhs.toFixed(1)}L{' '}
+                        <span className="text-slate-400">/</span>{' '}
+                        <span className="text-indigo-700">₹{bet.stretchTargetLakhs.toFixed(1)}L</span>
+                      </span>
+                    )}
                   </td>
-                  <td className="px-3.5 py-3.5 text-right font-mono font-semibold text-indigo-700">
-                    ₹{bet.stretchTargetLakhs.toFixed(1)}L
+                  <td className="px-3.5 py-3.5 text-right font-mono font-semibold text-slate-700">
+                    {bet.budgetDisplay}
                   </td>
-                  <td className="max-w-md px-3.5 py-3.5 leading-relaxed text-slate-600">
-                    {bet.rationale}
+                  <td className="px-3.5 py-3.5">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                        DECISION_BADGE[bet.decisionCategory]
+                      }`}
+                    >
+                      {bet.verdictLabel}
+                    </span>
                   </td>
                 </tr>
               ))}
