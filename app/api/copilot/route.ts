@@ -209,24 +209,30 @@ function summarizeToolLabel(toolName: string, asOfDate?: string): string {
   }
 }
 
+export const maxDuration = 60;
+
 const DEFAULT_FLASH_MODELS = [
   'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
-  'gemini-3.5-flash-lite',
 ];
 
 function isRetryableOrFallbackError(err: unknown): boolean {
+  const name = err instanceof Error ? err.name : '';
   const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
   return (
+    name === 'AbortError' ||
+    name === 'TimeoutError' ||
+    lower.includes('aborted') ||
+    lower.includes('timeout') ||
     msg.includes('404') ||
     msg.includes('NOT_FOUND') ||
     msg.includes('503') ||
     msg.includes('UNAVAILABLE') ||
     msg.includes('429') ||
-    msg.includes('RESOURCE_EXHAUSTED') ||
-    msg.includes('AbortError') ||
-    msg.includes('TimeoutError')
+    msg.includes('RESOURCE_EXHAUSTED')
   );
 }
 
@@ -246,7 +252,8 @@ async function generateWithFallback(
           systemInstruction,
           tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
           temperature: 0.2,
-          abortSignal: AbortSignal.timeout(25000),
+          ...(model === 'gemini-3.5-flash' ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+          abortSignal: AbortSignal.timeout(18000),
         },
       });
       return { response, model };
@@ -323,7 +330,8 @@ export async function POST(request: NextRequest) {
 
       const functionCalls = response.functionCalls;
       if (!functionCalls || functionCalls.length === 0) {
-        finalText = response.text?.trim() || 'No response generated.';
+        const rawText = response.text?.trim() || 'No response generated.';
+        finalText = rawText.replace(/^thought\s*\r?\n/i, '').trim();
         break;
       }
 
