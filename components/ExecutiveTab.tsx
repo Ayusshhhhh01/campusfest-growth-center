@@ -31,13 +31,25 @@ interface ExecutiveTabProps {
   onNavigateToPipeline: () => void;
 }
 
-const FUNNEL_COLORS = ['#64748B', '#475569', '#6366F1', '#4F46E5', '#0EA5E9', '#10B981'];
-const INDUSTRY_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+const FUNNEL_GRADIENTS = [
+  { id: 'funnelGrad0', start: '#64748B', end: '#475569' },
+  { id: 'funnelGrad1', start: '#6366F1', end: '#4F46E5' },
+  { id: 'funnelGrad2', start: '#6366F1', end: '#7C3AED' },
+  { id: 'funnelGrad3', start: '#4F46E5', end: '#7C3AED' },
+  { id: 'funnelGrad4', start: '#0EA5E9', end: '#2563EB' },
+  { id: 'funnelGrad5', start: '#10B981', end: '#059669' },
+];
+
+const INDUSTRY_GRADIENTS = [
+  { id: 'indGrad0', start: '#10B981', end: '#059669' },
+  { id: 'indGrad1', start: '#6366F1', end: '#7C3AED' },
+  { id: 'indGrad2', start: '#0EA5E9', end: '#0284C7' },
+  { id: 'indGrad3', start: '#F59E0B', end: '#D97706' },
+  { id: 'indGrad4', start: '#64748B', end: '#475569' },
+  { id: 'indGrad5', start: '#EC4899', end: '#DB2777' },
+];
 
 const emptySubscribe = () => () => {};
-
-const CARD_SURFACE =
-  'rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
 
 export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) {
   const mounted = useSyncExternalStore(
@@ -65,8 +77,7 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
   const largest = industry_concentration.largest_sponsor;
   const concRisk = industry_concentration.concentration_risk_level;
 
-  const totalAttempts =
-    outbound_vs_warm.outbound_attempts + outbound_vs_warm.warm_attempts;
+  const totalAttempts = outbound_vs_warm.outbound_attempts + outbound_vs_warm.warm_attempts;
   const outboundZero = outbound_vs_warm.outbound_confirmed_deals === 0;
   const warmShareDealsPct =
     populations.confirmed_opportunities > 0
@@ -77,16 +88,16 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
 
   return (
     <div className="space-y-6">
-      {/* 4 Hero KPI Cards */}
+      {/* 4 Glass Hero KPI Cards */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Card 1: Qualified Brands */}
-        <div className={`${CARD_SURFACE} flex flex-col justify-between p-5`}>
+        <div className="glass-card glass-card-hover flex flex-col justify-between p-5">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Qualified Brands
               </span>
-              <span className="rounded-lg bg-indigo-50 p-2 text-indigo-600 ring-1 ring-indigo-100">
+              <span className="rounded-xl bg-indigo-50/90 p-2 text-indigo-600 ring-1 ring-indigo-200/60">
                 <Building2 className="h-4 w-4" />
               </span>
             </div>
@@ -94,44 +105,46 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
               <span className="text-3xl font-bold tracking-tight text-slate-900">
                 {populations.qualified_brands}
               </span>
-              <span className="text-sm font-medium text-slate-400">
+              <span className="text-sm font-medium text-slate-500">
                 / {targets.qualified_brands_goal} target
               </span>
             </div>
           </div>
 
           <div className="mt-4">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
               <div
                 className={`h-full rounded-full transition-all ${
-                  qualDelta >= 0 ? 'bg-emerald-500' : 'bg-indigo-600'
+                  qualDelta >= 0
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                    : 'bg-gradient-to-r from-indigo-500 to-violet-500'
                 }`}
                 style={{ width: `${qualPct}%` }}
               />
             </div>
             <div className="mt-2.5 flex items-center justify-between text-xs tabular-nums">
               <span
-                className={`inline-flex items-center rounded-md px-1.5 py-0.5 font-semibold ${
+                className={`inline-flex items-center rounded-md px-2 py-0.5 font-semibold ${
                   qualDelta >= 0
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-amber-50 text-amber-700'
+                    ? 'bg-emerald-50/90 text-emerald-700 ring-1 ring-emerald-200/60'
+                    : 'bg-amber-50/90 text-amber-800 ring-1 ring-amber-200/60'
                 }`}
               >
                 {qualDelta >= 0 ? `+${qualDelta} ahead` : `${qualDelta} vs goal`}
               </span>
-              <span className="truncate text-slate-500">{targets.target_version ?? 'Target'}</span>
+              <span className="truncate text-slate-600">{targets.target_version ?? 'Target'}</span>
             </div>
           </div>
         </div>
 
         {/* Card 2: Confirmed Partnerships */}
-        <div className={`${CARD_SURFACE} flex flex-col justify-between p-5`}>
+        <div className="glass-card glass-card-hover flex flex-col justify-between p-5">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Confirmed Partnerships
               </span>
-              <span className="rounded-lg bg-emerald-50 p-2 text-emerald-600 ring-1 ring-emerald-100">
+              <span className="rounded-xl bg-emerald-50/90 p-2 text-emerald-600 ring-1 ring-emerald-200/60">
                 <Handshake className="h-4 w-4" />
               </span>
             </div>
@@ -139,32 +152,34 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
               <span className="text-3xl font-bold tracking-tight text-slate-900">
                 {populations.confirmed_opportunities}
               </span>
-              <span className="text-sm font-medium text-slate-400">
+              <span className="text-sm font-medium text-slate-500">
                 / {targets.confirmed_partnerships_goal} target
               </span>
             </div>
           </div>
 
           <div className="mt-4">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/70">
               <div
                 className={`h-full rounded-full transition-all ${
-                  confDelta >= 0 ? 'bg-emerald-500' : 'bg-amber-500'
+                  confDelta >= 0
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                    : 'bg-gradient-to-r from-indigo-500 to-amber-500'
                 }`}
                 style={{ width: `${confPct}%` }}
               />
             </div>
             <div className="mt-2.5 flex items-center justify-between text-xs tabular-nums">
               <span
-                className={`inline-flex items-center rounded-md px-1.5 py-0.5 font-semibold ${
+                className={`inline-flex items-center rounded-md px-2 py-0.5 font-semibold ${
                   confDelta >= 0
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-amber-50 text-amber-700'
+                    ? 'bg-emerald-50/90 text-emerald-700 ring-1 ring-emerald-200/60'
+                    : 'bg-amber-50/90 text-amber-800 ring-1 ring-amber-200/60'
                 }`}
               >
                 {confDelta >= 0 ? `+${confDelta} vs goal` : `${confDelta} behind goal`}
               </span>
-              <span className="text-slate-500">
+              <span className="text-slate-600">
                 {integrity_checks.stage_breakdown.withdrawn > 0
                   ? `${integrity_checks.stage_breakdown.withdrawn} withdrawn`
                   : `${populations.opportunities} total opps`}
@@ -174,13 +189,13 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
         </div>
 
         {/* Card 3: Reported Deal Value */}
-        <div className={`${CARD_SURFACE} flex flex-col justify-between p-5`}>
+        <div className="glass-card glass-card-hover flex flex-col justify-between p-5">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Reported Deal Value
               </span>
-              <span className="rounded-lg bg-sky-50 p-2 text-sky-600 ring-1 ring-sky-100">
+              <span className="rounded-xl bg-sky-50/90 p-2 text-sky-600 ring-1 ring-sky-200/60">
                 <IndianRupee className="h-4 w-4" />
               </span>
             </div>
@@ -190,7 +205,7 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
           </div>
 
           <div className="mt-3">
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 text-xs tabular-nums">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/80 bg-white/60 p-2.5 text-xs tabular-nums shadow-2xs">
               <div>
                 <div className="text-[11px] text-slate-500">
                   Cash ({financials.confirmed_cash_deals})
@@ -199,7 +214,7 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                   {formatInr(financials.confirmed_cash_value_inr)}
                 </div>
               </div>
-              <div className="border-l border-slate-200/80 pl-2.5">
+              <div className="border-l border-slate-200/70 pl-2.5">
                 <div className="text-[11px] text-slate-500">
                   In-Kind ({financials.confirmed_in_kind_deals})
                 </div>
@@ -216,10 +231,10 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
 
         {/* Card 4: Verified Cash Collected */}
         <div
-          className={`${CARD_SURFACE} flex flex-col justify-between p-5 ${
+          className={`glass-card glass-card-hover flex flex-col justify-between p-5 ${
             hasReceipts
-              ? 'border-emerald-200/90 bg-emerald-50/25'
-              : 'border-amber-200/90 bg-amber-50/20'
+              ? 'ring-1 ring-emerald-300/60'
+              : 'ring-1 ring-amber-300/60'
           }`}
         >
           <div>
@@ -228,10 +243,10 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                 Verified Cash Collected
               </span>
               <span
-                className={`rounded-lg p-2 ring-1 ${
+                className={`rounded-xl p-2 ring-1 ${
                   hasReceipts
-                    ? 'bg-emerald-50 text-emerald-600 ring-emerald-200'
-                    : 'bg-amber-50 text-amber-600 ring-amber-200'
+                    ? 'bg-emerald-50/90 text-emerald-600 ring-emerald-200/70'
+                    : 'bg-amber-50/90 text-amber-600 ring-amber-200/70'
                 }`}
               >
                 <Banknote className="h-4 w-4" />
@@ -259,12 +274,12 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
               </div>
             ) : (
               <div className="mt-3">
-                <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200/80 bg-amber-50/90 px-2.5 py-1 text-xs font-semibold text-amber-900">
                   <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
                   Not recorded in source
                 </span>
                 <p className="mt-2.5 text-xs leading-relaxed text-slate-600 tabular-nums">
-                  <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] text-slate-800">
+                  <code className="rounded bg-slate-100/90 px-1 py-0.5 font-mono text-[11px] text-slate-800">
                     cash_collected_inr
                   </code>{' '}
                   is <code className="font-mono text-[11px]">NULL</code>.{' '}
@@ -284,12 +299,22 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
         </div>
       </section>
 
-      {/* High-Contrast Executive Diagnostic Callout Banner */}
-      <section className="rounded-xl bg-slate-900 px-5 py-4 text-white shadow-sm ring-1 ring-slate-900/10 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
-              <TrendingUp className="h-3.5 w-3.5" />
+      {/* Dark Glassmorphic Hero Diagnostic Banner */}
+      <section className="relative overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-slate-900/95 px-6 py-5 text-white shadow-xl backdrop-blur-xl">
+        {/* Subtle radial highlight accents */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-20 -right-12 h-56 w-56 rounded-full bg-indigo-500/25 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-24 left-1/4 h-52 w-52 rounded-full bg-emerald-500/15 blur-3xl"
+        />
+
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-200 backdrop-blur-md">
+              <TrendingUp className="h-3 w-3 text-emerald-300" />
               Core Growth Diagnostic • {summary.as_of_date}
             </div>
             <p className="text-sm font-semibold tracking-tight text-white sm:text-base tabular-nums">
@@ -300,17 +325,17 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center tabular-nums">
-            <div className="rounded-lg border border-white/10 bg-white/5 px-3.5 py-2">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <div className="rounded-xl border border-rose-400/25 bg-rose-500/10 px-4 py-2.5 shadow-[0_0_24px_rgba(244,63,94,0.12)] backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-rose-200/80">
                 Cold Outbound
               </div>
-              <div className="mt-0.5 text-sm font-bold text-rose-300">
+              <div className="mt-0.5 text-sm font-bold text-rose-200">
                 {outbound_vs_warm.outbound_attempts} touches →{' '}
                 {formatInr(outbound_vs_warm.outbound_confirmed_value_inr)}
               </div>
             </div>
-            <div className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3.5 py-2">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+            <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/15 px-4 py-2.5 shadow-[0_0_24px_rgba(16,185,129,0.18)] backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200/90">
                 Warm Channels
               </div>
               <div className="mt-0.5 text-sm font-bold text-emerald-300">
@@ -324,17 +349,17 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
 
       {/* Funnel Chart + Population Integrity Panel */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className={`${CARD_SURFACE} p-6 lg:col-span-2`}>
+        <div className="glass-card p-6 lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-semibold tracking-tight text-slate-900">
                 Sponsor Acquisition Funnel (IST Point-in-Time)
               </h2>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-slate-600">
                 Distinct entity populations from total brands through confirmed partnerships
               </p>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 tabular-nums">
+            <div className="glass-pill inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-slate-600 tabular-nums">
               <Layers className="h-3.5 w-3.5 text-indigo-600" />
               <span>
                 Brand → Confirmed:{' '}
@@ -359,6 +384,14 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                   layout="vertical"
                   margin={{ top: 4, right: 28, left: 16, bottom: 4 }}
                 >
+                  <defs>
+                    {FUNNEL_GRADIENTS.map((g) => (
+                      <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor={g.start} stopOpacity={0.92} />
+                        <stop offset="100%" stopColor={g.end} stopOpacity={1} />
+                      </linearGradient>
+                    ))}
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
                   <XAxis type="number" tick={{ fontSize: 12, fill: '#64748B' }} />
                   <YAxis
@@ -368,18 +401,18 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                     tick={{ fontSize: 12, fill: '#334155', fontWeight: 500 }}
                   />
                   <Tooltip
-                    cursor={{ fill: '#F1F5F9' }}
+                    cursor={{ fill: 'rgba(99, 102, 241, 0.06)' }}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
                       const item = payload[0].payload as (typeof funnel)[number];
                       return (
-                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg tabular-nums">
+                        <div className="rounded-xl border border-white/80 bg-white/90 px-3.5 py-2.5 text-xs shadow-xl backdrop-blur-md tabular-nums">
                           <div className="font-semibold text-slate-900">{item.step}</div>
                           <div className="mt-0.5 text-slate-600">
                             Count: <strong className="text-slate-900">{item.count}</strong>
                           </div>
                           {item.conversion_from_prev_pct !== null && (
-                            <div className="text-indigo-600">
+                            <div className="font-medium text-indigo-600">
                               Step conversion: {item.conversion_from_prev_pct}%
                             </div>
                           )}
@@ -387,9 +420,12 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                       );
                     }}
                   />
-                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={26}>
+                  <Bar dataKey="count" radius={[0, 8, 8, 0]} barSize={26}>
                     {funnel.map((entry, idx) => (
-                      <Cell key={entry.step} fill={FUNNEL_COLORS[idx % FUNNEL_COLORS.length]} />
+                      <Cell
+                        key={entry.step}
+                        fill={`url(#${FUNNEL_GRADIENTS[idx % FUNNEL_GRADIENTS.length].id})`}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -401,11 +437,11 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
             )}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 sm:grid-cols-6 tabular-nums">
+          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-200/60 pt-4 sm:grid-cols-6 tabular-nums">
             {funnel.map((f) => (
               <div
                 key={f.step}
-                className="rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2 text-center"
+                className="rounded-xl border border-white/80 bg-white/60 px-2.5 py-2 text-center shadow-2xs"
               >
                 <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                   {f.step}
@@ -422,45 +458,45 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
         </div>
 
         {/* Separate Populations & Integrity Panel */}
-        <div className={`${CARD_SURFACE} flex flex-col justify-between p-6`}>
+        <div className="glass-card flex flex-col justify-between p-6">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-slate-900">
               Population &amp; Integrity Checks
             </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-600">
               Separate populations enforced — touches never inflated as brands
             </p>
 
             <dl className="mt-5 space-y-3 text-sm tabular-nums">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
                 <dt className="text-xs font-medium text-slate-600">Outreach Attempts</dt>
                 <dd className="font-semibold text-slate-900">{populations.attempts}</dd>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
                 <dt className="text-xs font-medium text-slate-600">Unique Contacts Touched</dt>
                 <dd className="font-semibold text-slate-900">
                   {populations.unique_contacts_touched}
                 </dd>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
                 <dt className="text-xs font-medium text-slate-600">Positive Reply Brands</dt>
                 <dd className="font-semibold text-slate-900">
                   {populations.positive_reply_brands}
                 </dd>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
                 <dt className="text-xs font-medium text-slate-600">
                   Unqualified Positive Replies
                 </dt>
-                <dd className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80">
+                <dd className="inline-flex items-center rounded-full bg-amber-50/90 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80">
                   {integrity_checks.unqualified_positive_reply_brands} brands
                 </dd>
               </div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2.5">
                 <dt className="text-xs font-medium text-slate-600">
                   Opps w/ Unqualified Brand
                 </dt>
-                <dd className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                <dd className="inline-flex items-center rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200/80">
                   {integrity_checks.brands_with_opportunities_not_qualified} brands
                 </dd>
               </div>
@@ -473,34 +509,34 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
             </dl>
           </div>
 
-          <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+          <div className="mt-4 rounded-xl border border-white/80 bg-white/60 px-3 py-2 text-[11px] text-slate-600">
             History snapshots use latest version per entity with{' '}
-            <code className="font-mono text-slate-700">effective_at &lt;= cutoff</code>.
+            <code className="font-mono text-slate-800">effective_at &lt;= cutoff</code>.
           </div>
         </div>
       </section>
 
       {/* Channel Performance Table */}
-      <section className={`${CARD_SURFACE} p-6`}>
+      <section className="glass-card p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-slate-900">
               Channel Performance Matrix
             </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-600">
               Outreach volume, reply classification, qualification yield, and confirmed deal
               revenue by channel
             </p>
           </div>
-          <span className="text-xs font-medium text-slate-500 tabular-nums">
+          <span className="glass-pill rounded-full px-3 py-1 text-xs font-medium text-slate-600 tabular-nums">
             Total attempts: <strong className="text-slate-900">{totalAttempts}</strong>
           </span>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm tabular-nums">
-            <thead>
-              <tr className="bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-white/80 bg-white/50">
+          <table className="min-w-full divide-y divide-slate-200/70 text-sm tabular-nums">
+            <thead className="bg-slate-50/70 backdrop-blur-md">
+              <tr className="text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Channel</th>
                 <th className="px-4 py-3 text-right">Attempts</th>
                 <th className="px-4 py-3 text-right">Reply %</th>
@@ -512,21 +548,21 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                 <th className="px-4 py-3 text-right">Reported Value</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200/50">
               {channel_performance.channels.map((ch) => {
                 const isOutbound = ch.channel === 'email' || ch.channel === 'linkedin';
                 const dealYield =
                   ch.attempts > 0 ? ((ch.confirmed_deals / ch.attempts) * 100).toFixed(1) : '0.0';
                 return (
-                  <tr key={ch.channel} className="transition hover:bg-slate-50/80">
+                  <tr key={ch.channel} className="transition hover:bg-indigo-50/40">
                     <td className="px-4 py-3.5 font-medium text-slate-900">
                       <div className="flex items-center gap-2">
                         <span>{CHANNEL_LABELS[ch.channel] ?? ch.channel}</span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                             isOutbound
-                              ? 'bg-slate-100 text-slate-600'
-                              : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70'
+                              ? 'bg-slate-100/90 text-slate-600'
+                              : 'bg-emerald-50/90 text-emerald-700 ring-1 ring-emerald-200/70'
                           }`}
                         >
                           {isOutbound ? 'Outbound' : 'Warm'}
@@ -555,8 +591,8 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${
                           ch.confirmed_deals > 0
-                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70'
-                            : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200/70'
+                            ? 'bg-emerald-50/90 text-emerald-700 ring-1 ring-emerald-200/70'
+                            : 'bg-rose-50/90 text-rose-700 ring-1 ring-rose-200/70'
                         }`}
                       >
                         {dealYield}%
@@ -569,8 +605,8 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                 );
               })}
 
-              {/* Bolded Outbound vs Warm Totals */}
-              <tr className="bg-slate-50/70 font-semibold text-slate-700">
+              {/* Bolded Outbound vs Warm Subtotals */}
+              <tr className="bg-slate-100/60 font-semibold text-slate-700">
                 <td className="px-4 py-2.5 text-xs">
                   Cold Outbound Subtotal (Email + LinkedIn)
                 </td>
@@ -597,7 +633,7 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                   {formatInr(outbound_vs_warm.outbound_confirmed_value_inr)}
                 </td>
               </tr>
-              <tr className="bg-emerald-50/40 font-semibold text-slate-900">
+              <tr className="bg-emerald-50/55 font-semibold text-slate-900">
                 <td className="px-4 py-2.5 text-xs">
                   Warm Channels Subtotal (Intro + Web Inbound)
                 </td>
@@ -630,11 +666,11 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
 
       {/* Industry & Sponsor Concentration Breakdown */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className={`${CARD_SURFACE} p-6 lg:col-span-2`}>
+        <div className="glass-card p-6 lg:col-span-2">
           <h2 className="text-base font-semibold tracking-tight text-slate-900">
             Confirmed Sponsorship Value by Industry
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-600">
             Distribution of confirmed partner commitments across vertical categories
           </p>
 
@@ -645,6 +681,14 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                   data={industry_concentration.industries}
                   margin={{ top: 8, right: 20, left: 12, bottom: 18 }}
                 >
+                  <defs>
+                    {INDUSTRY_GRADIENTS.map((g) => (
+                      <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={g.start} stopOpacity={1} />
+                        <stop offset="100%" stopColor={g.end} stopOpacity={0.82} />
+                      </linearGradient>
+                    ))}
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis
                     dataKey="industry"
@@ -659,13 +703,13 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                     tick={{ fontSize: 12, fill: '#64748B' }}
                   />
                   <Tooltip
-                    cursor={{ fill: '#F1F5F9' }}
+                    cursor={{ fill: 'rgba(99, 102, 241, 0.06)' }}
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null;
                       const item = payload[0]
                         .payload as (typeof industry_concentration.industries)[number];
                       return (
-                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg tabular-nums">
+                        <div className="rounded-xl border border-white/80 bg-white/90 px-3.5 py-2.5 text-xs shadow-xl backdrop-blur-md tabular-nums">
                           <div className="font-semibold text-slate-900">{item.industry}</div>
                           <div className="mt-0.5 text-slate-600">
                             Confirmed:{' '}
@@ -679,11 +723,11 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                       );
                     }}
                   />
-                  <Bar dataKey="confirmed_value_inr" radius={[6, 6, 0, 0]} barSize={40}>
+                  <Bar dataKey="confirmed_value_inr" radius={[8, 8, 0, 0]} barSize={40}>
                     {industry_concentration.industries.map((entry, idx) => (
                       <Cell
                         key={entry.industry}
-                        fill={INDUSTRY_COLORS[idx % INDUSTRY_COLORS.length]}
+                        fill={`url(#${INDUSTRY_GRADIENTS[idx % INDUSTRY_GRADIENTS.length].id})`}
                       />
                     ))}
                   </Bar>
@@ -700,7 +744,7 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
         </div>
 
         {/* Concentration Risk Panel */}
-        <div className={`${CARD_SURFACE} p-6`}>
+        <div className="glass-card p-6">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold tracking-tight text-slate-900">
               Sponsor Concentration
@@ -708,10 +752,10 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
             <span
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums ${
                 concRisk === 'red'
-                  ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
+                  ? 'bg-rose-50/90 text-rose-700 ring-1 ring-rose-200'
                   : concRisk === 'amber'
-                    ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
-                    : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                    ? 'bg-amber-50/90 text-amber-800 ring-1 ring-amber-200'
+                    : 'bg-emerald-50/90 text-emerald-700 ring-1 ring-emerald-200'
               }`}
             >
               <ShieldAlert className="h-3.5 w-3.5" />
@@ -724,14 +768,14 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
           </div>
 
           {largest ? (
-            <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 tabular-nums">
+            <div className="mt-4 rounded-xl border border-white/80 bg-white/60 p-3.5 shadow-2xs tabular-nums">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Largest Single Sponsor
               </div>
               <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-sm font-semibold text-slate-900">
                   {largest.brand_name}{' '}
-                  <span className="font-mono text-xs text-slate-400">({largest.brand_id})</span>
+                  <span className="font-mono text-xs text-slate-500">({largest.brand_id})</span>
                 </span>
                 <span className="text-xl font-bold text-indigo-700">{largest.share_pct}%</span>
               </div>
@@ -752,16 +796,18 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium text-slate-800">
                     {sp.brand_name}{' '}
-                    <span className="text-slate-400">({sp.industry})</span>
+                    <span className="text-slate-500">({sp.industry})</span>
                   </span>
                   <span className="shrink-0 font-mono font-semibold text-slate-900">
                     {formatInr(sp.confirmed_value_inr)} ({sp.share_pct}%)
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70">
                   <div
                     className={`h-full rounded-full ${
-                      sp.share_pct > 30 ? 'bg-amber-500' : 'bg-indigo-500'
+                      sp.share_pct > 30
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                        : 'bg-gradient-to-r from-indigo-500 to-violet-500'
                     }`}
                     style={{ width: `${Math.min(100, sp.share_pct * 2.5)}%` }}
                   />

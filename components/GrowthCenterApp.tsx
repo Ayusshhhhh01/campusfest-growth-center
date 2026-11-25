@@ -92,7 +92,16 @@ export function GrowthCenterApp() {
   }, [asOfDate, loadDashboardData]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900">
+    <div className="relative min-h-screen bg-[#F4F7FB] text-slate-900 isolate">
+      {/* Fixed Ambient Mesh Gradient Blobs */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      >
+        <div className="absolute -top-36 -left-24 h-[460px] w-[460px] rounded-full bg-[#6366F1]/12 blur-3xl" />
+        <div className="absolute top-1/4 -right-28 h-[420px] w-[420px] rounded-full bg-[#0EA5E9]/10 blur-3xl" />
+        <div className="absolute -bottom-32 left-1/3 h-[440px] w-[440px] rounded-full bg-[#10B981]/8 blur-3xl" />
+      </div>
       <HeaderBar
         asOfDate={asOfDate}
         onDateChange={handleDateChange}

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-[#F8FAFC] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900 flex flex-col">
+      <body className="min-h-full bg-[#F4F7FB] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900 flex flex-col">
         {children}
       </body>
     </html>
