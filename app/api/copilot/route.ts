@@ -214,9 +214,16 @@ export const maxDuration = 60;
 const DEFAULT_FLASH_MODELS = [
   'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3.6-flash',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
 ];
+
+function isQuotaError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
+}
 
 function isRetryableOrFallbackError(err: unknown): boolean {
   const name = err instanceof Error ? err.name : '';
@@ -231,8 +238,7 @@ function isRetryableOrFallbackError(err: unknown): boolean {
     msg.includes('NOT_FOUND') ||
     msg.includes('503') ||
     msg.includes('UNAVAILABLE') ||
-    msg.includes('429') ||
-    msg.includes('RESOURCE_EXHAUSTED')
+    isQuotaError(err)
   );
 }
 
@@ -243,7 +249,39 @@ async function generateWithFallback(
   systemInstruction: string
 ) {
   let lastError: unknown;
+  const nonQuotaModels: string[] = [];
+
   for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+        config: {
+          systemInstruction,
+          tools: [{ functionDeclarations: TOOL_DECLARATIONS }],
+          temperature: 0.2,
+          ...(model === 'gemini-3.5-flash' ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+          abortSignal: AbortSignal.timeout(15000),
+        },
+      });
+      return { response, model };
+    } catch (err) {
+      lastError = err;
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Copilot] Model ${model} failed: ${errMsg.slice(0, 220)}`);
+      if (!isQuotaError(err) && !errMsg.includes('404') && !errMsg.includes('NOT_FOUND')) {
+        nonQuotaModels.push(model);
+      }
+      if (isRetryableOrFallbackError(err)) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  // Second pass on transient 503/timeout models after brief backoff
+  for (const model of nonQuotaModels) {
+    await new Promise((r) => setTimeout(r, 1200));
     try {
       const response = await ai.models.generateContent({
         model,
@@ -265,6 +303,7 @@ async function generateWithFallback(
       throw err;
     }
   }
+
   throw lastError;
 }
 
