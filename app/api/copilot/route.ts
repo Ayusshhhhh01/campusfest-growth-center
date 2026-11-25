@@ -450,7 +450,8 @@ async function streamTurnWithFallback(
   models: string[],
   contents: Content[],
   systemInstruction: string,
-  onToken: (text: string) => void
+  onToken: (text: string) => void,
+  onReplace: (text: string) => void
 ): Promise<{
   model: string;
   functionCalls: FunctionCall[];
@@ -460,12 +461,8 @@ async function streamTurnWithFallback(
   let lastError: unknown;
   const nonQuotaModels: string[] = [];
 
-  const attemptModel = async (
-    model: string,
-    timeoutMs: number,
-    markTokenEmitted: () => void
-  ) => {
-    let emittedAny = false;
+  const attemptModel = async (model: string, timeoutMs: number) => {
+    let emittedText = '';
     let firstTokenSeen = false;
     const collectedCalls: FunctionCall[] = [];
     const collectedParts: Part[] = [];
@@ -476,67 +473,118 @@ async function streamTurnWithFallback(
       config: buildModelConfig(model, systemInstruction, timeoutMs, true),
     });
 
-    for await (const chunk of stream) {
-      const parts = chunk.candidates?.[0]?.content?.parts ?? [];
-      for (const p of parts) {
-        if (p.functionCall) {
-          collectedCalls.push(p.functionCall);
-          collectedParts.push(p);
+    try {
+      for await (const chunk of stream) {
+        const parts = chunk.candidates?.[0]?.content?.parts ?? [];
+        for (const p of parts) {
+          if (p.functionCall) {
+            collectedCalls.push(p.functionCall);
+            collectedParts.push(p);
+          }
         }
-      }
-      if (collectedCalls.length === 0 && chunk.functionCalls?.length) {
-        for (const fc of chunk.functionCalls) {
-          collectedCalls.push(fc);
-          collectedParts.push({ functionCall: fc });
+        if (collectedCalls.length === 0 && chunk.functionCalls?.length) {
+          for (const fc of chunk.functionCalls) {
+            collectedCalls.push(fc);
+            collectedParts.push({ functionCall: fc });
+          }
         }
-      }
-      if (collectedCalls.length > 0) {
-        continue;
-      }
+        if (collectedCalls.length > 0) {
+          continue;
+        }
 
-      let textChunk = '';
-      for (const p of parts) {
-        if (typeof p.text === 'string' && !p.thought) {
-          textChunk += p.text;
+        let textChunk = '';
+        for (const p of parts) {
+          if (typeof p.text === 'string' && !p.thought) {
+            textChunk += p.text;
+          }
         }
-      }
-      if (!textChunk && typeof chunk.text === 'string') {
-        textChunk = chunk.text;
-      }
+        if (!textChunk && typeof chunk.text === 'string') {
+          textChunk = chunk.text;
+        }
 
-      if (textChunk) {
-        if (!firstTokenSeen) {
-          firstTokenSeen = true;
-          textChunk = textChunk.replace(/^thought\s*\r?\n/i, '');
-        }
         if (textChunk) {
-          emittedAny = true;
-          markTokenEmitted();
-          onToken(textChunk);
+          if (!firstTokenSeen) {
+            firstTokenSeen = true;
+            textChunk = textChunk.replace(/^thought\s*\r?\n/i, '');
+          }
+          if (textChunk) {
+            emittedText += textChunk;
+            onToken(textChunk);
+          }
         }
       }
-    }
 
+      return {
+        model,
+        functionCalls: collectedCalls,
+        modelParts: collectedParts,
+        emittedTokens: emittedText.length > 0,
+      };
+    } catch (err) {
+      throw Object.assign(err instanceof Error ? err : new Error(String(err)), {
+        _emittedText: emittedText,
+      });
+    }
+  };
+
+  const recoverMidStream = async (emittedText: string, failedModel: string) => {
+    const fallbackOrder = [
+      ...models.filter((m) => m !== failedModel),
+      failedModel,
+    ];
+    const { response, model } = await generateWithFallback(
+      ai,
+      fallbackOrder,
+      contents,
+      systemInstruction
+    );
+    const functionCalls = response.functionCalls ?? [];
+    if (functionCalls.length > 0) {
+      const modelParts = response.candidates?.[0]?.content?.parts ?? [
+        ...functionCalls.map((fc) => ({ functionCall: fc })),
+      ];
+      return {
+        model,
+        functionCalls,
+        modelParts,
+        emittedTokens: emittedText.length > 0,
+      };
+    }
+    const fullText = (response.text?.trim() || 'No response generated.').replace(
+      /^thought\s*\r?\n/i,
+      ''
+    );
+    if (emittedText && fullText.startsWith(emittedText)) {
+      const remaining = fullText.slice(emittedText.length);
+      if (remaining) onToken(remaining);
+    } else {
+      onReplace(fullText);
+    }
     return {
       model,
-      functionCalls: collectedCalls,
-      modelParts: collectedParts,
-      emittedTokens: emittedAny,
+      functionCalls: [] as FunctionCall[],
+      modelParts: [] as Part[],
+      emittedTokens: true,
     };
   };
 
   for (const model of models) {
-    let chunkStarted = false;
     try {
-      const res = await attemptModel(model, 18000, () => {
-        chunkStarted = true;
-      });
-      return res;
+      return await attemptModel(model, 18000);
     } catch (err) {
       lastError = err;
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`[Copilot Stream] Model ${model} failed: ${errMsg.slice(0, 220)}`);
-      if (chunkStarted) throw err;
+      const emittedText =
+        typeof (err as { _emittedText?: unknown })._emittedText === 'string'
+          ? (err as { _emittedText: string })._emittedText
+          : '';
+      console.warn(
+        `[Copilot Stream] Model ${model} failed (emitted=${emittedText.length} chars): ${errMsg.slice(0, 220)}`
+      );
+      if (emittedText.length > 0 && isRetryableOrFallbackError(err)) {
+        return await recoverMidStream(emittedText, model);
+      }
+      if (emittedText.length > 0) throw err;
       if (!isQuotaError(err) && !errMsg.includes('404') && !errMsg.includes('NOT_FOUND')) {
         nonQuotaModels.push(model);
       }
@@ -548,16 +596,19 @@ async function streamTurnWithFallback(
   }
 
   for (const model of nonQuotaModels) {
-    let chunkStarted = false;
     await new Promise((r) => setTimeout(r, 1200));
     try {
-      const res = await attemptModel(model, 20000, () => {
-        chunkStarted = true;
-      });
-      return res;
+      return await attemptModel(model, 20000);
     } catch (err) {
       lastError = err;
-      if (chunkStarted) throw err;
+      const emittedText =
+        typeof (err as { _emittedText?: unknown })._emittedText === 'string'
+          ? (err as { _emittedText: string })._emittedText
+          : '';
+      if (emittedText.length > 0 && isRetryableOrFallbackError(err)) {
+        return await recoverMidStream(emittedText, model);
+      }
+      if (emittedText.length > 0) throw err;
       if (isRetryableOrFallbackError(err)) {
         continue;
       }
@@ -762,13 +813,14 @@ export async function POST(request: NextRequest) {
               continue;
             }
 
-            // Round >= 1: use generateContentStream with pre-first-chunk fallback
+            // Round >= 1: use generateContentStream with pre-first-chunk and mid-stream fallback
             const streamResult = await streamTurnWithFallback(
               ai,
               orderedModels,
               contents,
               systemInstruction,
-              (tokenText) => sendEvent({ type: 'token', text: tokenText })
+              (tokenText) => sendEvent({ type: 'token', text: tokenText }),
+              (fullText) => sendEvent({ type: 'replace', text: fullText })
             );
             activeModel = streamResult.model;
 

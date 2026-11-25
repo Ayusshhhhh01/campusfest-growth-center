@@ -288,6 +288,7 @@ export function CopilotDrawer({
         const evt = JSON.parse(rawData) as
           | { type: 'status'; label?: string }
           | { type: 'token'; text?: string }
+          | { type: 'replace'; text?: string }
           | {
               type: 'done';
               as_of_date?: string;
@@ -304,6 +305,14 @@ export function CopilotDrawer({
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMsgId ? { ...m, content: m.content + tokenText } : m
+            )
+          );
+        } else if (evt.type === 'replace' && typeof evt.text === 'string') {
+          setStatusLabel(null);
+          const fullText = evt.text;
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId ? { ...m, content: fullText } : m
             )
           );
         } else if (evt.type === 'done') {
