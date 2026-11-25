@@ -133,7 +133,8 @@ export function loadBaselineFromWorkbook(xlsxPath?: string) {
     throw new Error(`Workbook not found at ${resolvedPath}`);
   }
 
-  const wb = XLSX.readFile(resolvedPath, { cellDates: false });
+  const fileBuffer = fs.readFileSync(/*turbopackIgnore: true*/ resolvedPath);
+  const wb = XLSX.read(fileBuffer, { type: 'buffer', cellDates: false });
   const duplicates: DuplicateAuditItem[] = [];
 
   const eventRows = readSheetRows<Record<string, unknown>>(wb, 'Event');
