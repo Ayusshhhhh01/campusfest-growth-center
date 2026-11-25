@@ -3,13 +3,15 @@
 import React, { useMemo, useState } from 'react';
 import {
   Banknote,
-  Bot,
   Check,
+  CheckCircle2,
   CheckSquare,
   Edit3,
   Filter,
+  Loader2,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   User,
   X,
@@ -28,38 +30,39 @@ interface PipelineTabProps {
   onRefresh: () => Promise<void>;
 }
 
+const CARD_SURFACE =
+  'rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
+
 const STAGE_BADGE_CLASS: Record<OpportunityStage, string> = {
-  prospecting: 'bg-slate-100 text-slate-700',
-  contacted: 'bg-sky-100 text-sky-800',
-  proposal_sent: 'bg-indigo-100 text-indigo-800',
-  negotiating: 'bg-amber-100 text-amber-800',
-  partner_confirmed: 'bg-emerald-100 text-emerald-800',
-  lost: 'bg-rose-100 text-rose-800',
-  withdrawn: 'bg-orange-100 text-orange-800',
+  prospecting: 'bg-slate-100 text-slate-700 ring-slate-200',
+  contacted: 'bg-sky-50 text-sky-700 ring-sky-200',
+  proposal_sent: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
+  negotiating: 'bg-amber-50 text-amber-800 ring-amber-200',
+  partner_confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  lost: 'bg-rose-50 text-rose-700 ring-rose-200',
+  withdrawn: 'bg-rose-50 text-rose-700 ring-rose-200',
 };
 
 const PRIORITY_BADGE_CLASS: Record<GrowthTaskRow['priority'], string> = {
-  high: 'bg-rose-100 text-rose-800',
-  medium: 'bg-amber-100 text-amber-800',
-  low: 'bg-slate-100 text-slate-700',
+  high: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200/80',
+  medium: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80',
+  low: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',
 };
 
 export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
   const { opportunities, tasks, channel_performance, reference, as_of_date } = data;
 
-  // Opportunity filters
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
 
-  // Row mutation loading states
   const [savingOppId, setSavingOppId] = useState<string | null>(null);
+  const [savedOppId, setSavedOppId] = useState<string | null>(null);
   const [editingCashOppId, setEditingCashOppId] = useState<string | null>(null);
   const [cashInputValue, setCashInputValue] = useState<string>('');
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Add Opportunity modal
   const [addOppOpen, setAddOppOpen] = useState(false);
   const [newOppBrandId, setNewOppBrandId] = useState<string>(reference.brands[0]?.brand_id ?? '');
   const [newOppContactId, setNewOppContactId] = useState<string>('');
@@ -73,7 +76,6 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
   const [newOppOwner, setNewOppOwner] = useState<string>(reference.owners[0] ?? 'Riya Kapoor');
   const [creatingOpp, setCreatingOpp] = useState(false);
 
-  // Tasks state
   const [taskStatusFilter, setTaskStatusFilter] = useState<string>('all');
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<GrowthTaskRow | null>(null);
@@ -109,6 +111,13 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
     return tasks.filter((t) => t.status === taskStatusFilter);
   }, [tasks, taskStatusFilter]);
 
+  function flashSavedRow(oppId: string) {
+    setSavedOppId(oppId);
+    setTimeout(() => {
+      setSavedOppId((curr) => (curr === oppId ? null : curr));
+    }, 2200);
+  }
+
   async function handleStageChange(opp: DashboardOpportunity, nextStage: OpportunityStage) {
     if (nextStage === opp.stage) return;
     setActionError(null);
@@ -125,6 +134,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed updating stage');
       await onRefresh();
+      flashSavedRow(opp.opportunity_id);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed updating stage');
     } finally {
@@ -156,6 +166,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
       if (!res.ok) throw new Error(json.error || 'Failed saving cash collected');
       setEditingCashOppId(null);
       await onRefresh();
+      flashSavedRow(oppId);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed saving cash receipt');
     } finally {
@@ -311,60 +322,82 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
   return (
     <div className="space-y-6">
       {actionError && (
-        <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-2xs">
           <span>{actionError}</span>
-          <button type="button" onClick={() => setActionError(null)}>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="rounded p-1 hover:bg-rose-100"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
       {/* Campaigns Strip */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-        <div className="flex items-center justify-between">
+      <section className={`${CARD_SURFACE} p-6`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
               Acquisition Campaigns (SC01–SC06)
             </h2>
-            <p className="text-xs text-slate-500">
-              Campaign-level touch volume, qualification yield, and confirmed deal output as of{' '}
-              {as_of_date}
+            <p className="mt-0.5 text-xs text-slate-500 tabular-nums">
+              Campaign-level outreach touches, qualification yield, and confirmed deal output as of{' '}
+              <strong className="text-slate-700">{as_of_date}</strong>
             </p>
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+        <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {channel_performance.campaigns.map((camp) => (
             <div
               key={camp.sponsor_campaign_id}
-              className="rounded-lg border border-slate-200 bg-slate-50/60 p-3.5"
+              className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 transition hover:border-slate-300/80 hover:bg-white"
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
+                <div className="min-w-0">
                   <span className="font-mono text-[11px] font-semibold text-indigo-600">
                     {camp.sponsor_campaign_id} • {CHANNEL_LABELS[camp.channel] ?? camp.channel}
                   </span>
-                  <h3 className="text-sm font-semibold text-slate-900">{camp.campaign_name}</h3>
+                  <h3 className="mt-0.5 truncate text-sm font-semibold text-slate-900">
+                    {camp.campaign_name}
+                  </h3>
                 </div>
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-600 border border-slate-200">
+                <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
                   {camp.owner_name}
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
-                <div className="rounded bg-white p-1.5 border border-slate-100">
-                  <div className="text-slate-400">Attempts</div>
-                  <div className="font-semibold text-slate-900">{camp.attempts}</div>
+
+              <div className="mt-3.5 grid grid-cols-4 gap-2 text-center text-xs tabular-nums">
+                <div className="rounded-lg border border-slate-100 bg-white p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Touches
+                  </div>
+                  <div className="mt-0.5 font-bold text-slate-900">{camp.attempts}</div>
                 </div>
-                <div className="rounded bg-white p-1.5 border border-slate-100">
-                  <div className="text-slate-400">Qual.</div>
-                  <div className="font-semibold text-slate-900">{camp.qualified_brands}</div>
+                <div className="rounded-lg border border-slate-100 bg-white p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Qual.
+                  </div>
+                  <div className="mt-0.5 font-bold text-slate-900">{camp.qualified_brands}</div>
                 </div>
-                <div className="rounded bg-white p-1.5 border border-slate-100">
-                  <div className="text-slate-400">Confirmed</div>
-                  <div className="font-semibold text-emerald-700">{camp.confirmed_deals}</div>
+                <div className="rounded-lg border border-slate-100 bg-white p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Deals
+                  </div>
+                  <div
+                    className={`mt-0.5 font-bold ${
+                      camp.confirmed_deals > 0 ? 'text-emerald-700' : 'text-slate-500'
+                    }`}
+                  >
+                    {camp.confirmed_deals}
+                  </div>
                 </div>
-                <div className="rounded bg-white p-1.5 border border-slate-100">
-                  <div className="text-slate-400">Value</div>
-                  <div className="font-semibold text-slate-900">
+                <div className="rounded-lg border border-slate-100 bg-white p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Value
+                  </div>
+                  <div className="mt-0.5 font-bold text-slate-900">
                     {camp.confirmed_value_inr > 0
                       ? `₹${(camp.confirmed_value_inr / 100000).toFixed(1)}L`
                       : '₹0'}
@@ -377,14 +410,17 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
       </section>
 
       {/* Interactive Opportunities Table */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      <section className={`${CARD_SURFACE} p-6`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900 tabular-nums">
               Partner Opportunities Pipeline ({filteredOpps.length} of {opportunities.length})
             </h2>
-            <p className="text-xs text-slate-500">
-              Stage edits append versioned rows to <code className="font-mono">opportunity_history</code>{' '}
+            <p className="mt-0.5 text-xs text-slate-500">
+              Stage edits append versioned rows to{' '}
+              <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] text-slate-700">
+                opportunity_history
+              </code>{' '}
               on <strong className="text-slate-700">{as_of_date}</strong> so earlier snapshots stay
               intact.
             </p>
@@ -392,28 +428,28 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
           <button
             type="button"
             onClick={openNewOppModal}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800"
           >
             <Plus className="h-3.5 w-3.5" />
             Add New Opportunity
           </button>
         </div>
 
-        {/* Filters */}
+        {/* Crisp Filters */}
         <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
               placeholder="Search brand, deal, or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-xs text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
-            <Filter className="h-3.5 w-3.5 text-slate-400" />
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2">
+            <Filter className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             <select
               aria-label="Filter by stage"
               value={stageFilter}
@@ -429,8 +465,8 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
-            <Filter className="h-3.5 w-3.5 text-slate-400" />
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2">
+            <Filter className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             <select
               aria-label="Filter by channel"
               value={channelFilter}
@@ -445,8 +481,8 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5">
-            <User className="h-3.5 w-3.5 text-slate-400" />
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2">
+            <User className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             <select
               aria-label="Filter by owner"
               value={ownerFilter}
@@ -463,60 +499,73 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Opportunities Table */}
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-xs">
+          <table className="min-w-full divide-y divide-slate-200 text-xs tabular-nums">
             <thead>
-              <tr className="bg-slate-50 text-left font-semibold uppercase tracking-wider text-slate-500">
-                <th className="px-3 py-3">ID / Opportunity</th>
-                <th className="px-3 py-3">Brand</th>
-                <th className="px-3 py-3">Channel</th>
-                <th className="px-3 py-3">Owner</th>
-                <th className="px-3 py-3">Type</th>
-                <th className="px-3 py-3">Stage (Editable)</th>
-                <th className="px-3 py-3 text-right">Reported Value</th>
-                <th className="px-3 py-3">Cash Collected (₹)</th>
+              <tr className="bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-3.5 py-3">ID / Opportunity</th>
+                <th className="px-3.5 py-3">Brand</th>
+                <th className="px-3.5 py-3">Channel</th>
+                <th className="px-3.5 py-3">Owner</th>
+                <th className="px-3.5 py-3">Type</th>
+                <th className="px-3.5 py-3">Stage (Editable)</th>
+                <th className="px-3.5 py-3 text-right">Reported Value</th>
+                <th className="px-3.5 py-3">Cash Collected (₹)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredOpps.map((opp) => {
                 const isSaving = savingOppId === opp.opportunity_id;
+                const isJustSaved = savedOppId === opp.opportunity_id;
                 const isEditingCash = editingCashOppId === opp.opportunity_id;
+
                 return (
-                  <tr key={opp.opportunity_id} className="hover:bg-slate-50/70">
-                    <td className="px-3 py-2.5">
-                      <div className="font-mono font-semibold text-indigo-700">
-                        {opp.opportunity_id}
+                  <tr key={opp.opportunity_id} className="transition hover:bg-slate-50/80">
+                    <td className="px-3.5 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-semibold text-indigo-700">
+                          {opp.opportunity_id}
+                        </span>
+                        {isSaving && (
+                          <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />
+                        )}
+                        {isJustSaved && !isSaving && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                            <Check className="h-2.5 w-2.5" />
+                            Saved
+                          </span>
+                        )}
                       </div>
-                      <div className="max-w-[200px] truncate text-slate-700">
+                      <div className="max-w-[210px] truncate text-slate-600">
                         {opp.opportunity_name}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5">
-                      <div className="font-medium text-slate-900">{opp.brand_name}</div>
+                    <td className="px-3.5 py-3">
+                      <div className="font-semibold text-slate-900">{opp.brand_name}</div>
                       <div className="text-[11px] text-slate-500">
                         {opp.brand_id} • {opp.industry}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-slate-700">
+                    <td className="px-3.5 py-3 text-slate-700">
                       <div>{CHANNEL_LABELS[opp.channel] ?? opp.channel}</div>
                       <div className="font-mono text-[11px] text-slate-400">
                         {opp.sponsor_campaign_id ?? '—'}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-slate-700">{opp.owner_name}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3.5 py-3 text-slate-700">{opp.owner_name}</td>
+                    <td className="px-3.5 py-3">
                       <span
-                        className={`rounded-full px-2 py-0.5 font-medium ${
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           opp.deal_type === 'cash'
-                            ? 'bg-sky-50 text-sky-800'
-                            : 'bg-purple-50 text-purple-800'
+                            ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-200/70'
+                            : 'bg-violet-50 text-violet-700 ring-1 ring-violet-200/70'
                         }`}
                       >
                         {opp.deal_type === 'cash' ? 'Cash' : 'In-Kind'}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3.5 py-3">
                       <select
                         aria-label={`Stage for ${opp.opportunity_id}`}
                         value={opp.stage}
@@ -524,7 +573,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                         onChange={(e) =>
                           handleStageChange(opp, e.target.value as OpportunityStage)
                         }
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold outline-none ring-1 ring-inset ring-slate-200 ${
+                        className={`cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-semibold outline-none ring-1 ring-inset transition disabled:opacity-60 ${
                           STAGE_BADGE_CLASS[opp.stage]
                         }`}
                       >
@@ -535,10 +584,10 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                         ))}
                       </select>
                     </td>
-                    <td className="px-3 py-2.5 text-right font-mono font-semibold text-slate-900">
+                    <td className="px-3.5 py-3 text-right font-mono font-semibold text-slate-900">
                       {formatInr(opp.reported_value_inr)}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3.5 py-3">
                       {isEditingCash ? (
                         <div className="flex items-center gap-1">
                           <input
@@ -548,13 +597,13 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                             value={cashInputValue}
                             onChange={(e) => setCashInputValue(e.target.value)}
                             placeholder="₹ amount"
-                            className="w-24 rounded border border-indigo-300 bg-white px-2 py-1 font-mono text-xs text-slate-900 outline-none"
+                            className="w-24 rounded-lg border border-indigo-300 bg-white px-2 py-1 font-mono text-xs text-slate-900 outline-none ring-2 ring-indigo-100"
                           />
                           <button
                             type="button"
                             onClick={() => saveCashCollected(opp.opportunity_id, false)}
                             disabled={isSaving}
-                            className="rounded bg-emerald-600 p-1 text-white hover:bg-emerald-700"
+                            className="rounded-lg bg-emerald-600 p-1.5 text-white hover:bg-emerald-700"
                             title="Save cash receipt"
                           >
                             <Check className="h-3.5 w-3.5" />
@@ -563,7 +612,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                             type="button"
                             onClick={() => saveCashCollected(opp.opportunity_id, true)}
                             disabled={isSaving}
-                            className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] text-slate-600 hover:bg-slate-100"
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-100"
                             title="Clear to NULL"
                           >
                             Null
@@ -571,26 +620,28 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                           <button
                             type="button"
                             onClick={() => setEditingCashOppId(null)}
-                            className="rounded p-1 text-slate-400 hover:text-slate-700"
+                            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between gap-2">
                           {opp.cash_collected_inr !== null ? (
                             <span className="font-mono font-semibold text-emerald-700">
                               {formatInr(opp.cash_collected_inr)}
                             </span>
                           ) : (
-                            <span className="text-amber-700">Not recorded</span>
+                            <span className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                              Not recorded
+                            </span>
                           )}
                           <button
                             type="button"
                             onClick={() => startEditCash(opp)}
-                            className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
                           >
-                            <Banknote className="h-3 w-3" />
+                            <Banknote className="h-3 w-3 text-slate-400" />
                             Log
                           </button>
                         </div>
@@ -601,7 +652,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
               })}
               {filteredOpps.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                     No opportunities match your filters.
                   </td>
                 </tr>
@@ -612,28 +663,31 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
       </section>
 
       {/* Tasks & Action Items Board */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      <section className={`${CARD_SURFACE} p-6`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900 tabular-nums">
               Growth Tasks &amp; Execution Board ({tasks.length})
             </h2>
-            <p className="text-xs text-slate-500">
-              Persisted in Supabase <code className="font-mono">growth_tasks</code> with{' '}
-              <code className="font-mono">manual</code> vs <code className="font-mono">copilot</code>{' '}
-              source tracking
+            <p className="mt-0.5 text-xs text-slate-500">
+              Persisted in Supabase{' '}
+              <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] text-slate-700">
+                growth_tasks
+              </code>{' '}
+              with <strong className="text-slate-700">AI Copilot</strong> vs{' '}
+              <strong className="text-slate-700">Manual</strong> provenance badges
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
+            <div className="flex rounded-xl border border-slate-200/80 bg-slate-100/80 p-1 text-xs">
               {(['all', 'todo', 'in_progress', 'done'] as const).map((st) => (
                 <button
                   key={st}
                   type="button"
                   onClick={() => setTaskStatusFilter(st)}
-                  className={`rounded-md px-2.5 py-1 font-medium capitalize transition ${
+                  className={`rounded-lg px-2.5 py-1 font-medium capitalize transition ${
                     taskStatusFilter === st
-                      ? 'bg-white text-slate-900 shadow-xs'
+                      ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -644,7 +698,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
             <button
               type="button"
               onClick={openNewTaskModal}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-indigo-700"
             >
               <Plus className="h-3.5 w-3.5" />
               New Task
@@ -654,54 +708,52 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
 
         <div className="mt-4 space-y-2.5">
           {filteredTasks.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-xs text-slate-500">
-              No tasks yet. Create a task here or click &ldquo;Assign Follow-up Task&rdquo; in Tab
-              3&apos;s 48-Hour Qualification SLA Monitor.
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-10 text-center text-xs text-slate-500">
+              No tasks yet. Create a task here, assign one in Tab 3&apos;s 48-Hour Qualification SLA
+              Monitor, or confirm a proposed action card in the AI Copilot.
             </div>
           ) : (
             filteredTasks.map((task) => (
               <div
                 key={task.task_id}
-                className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3.5 sm:flex-row sm:items-center"
+                className="flex flex-col justify-between gap-3 rounded-xl border border-slate-200/80 bg-white p-4 transition hover:border-slate-300/80 sm:flex-row sm:items-center"
               >
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <CheckSquare
-                      className={`h-4 w-4 ${
-                        task.status === 'done' ? 'text-emerald-600' : 'text-slate-400'
-                      }`}
-                    />
+                    {task.status === 'done' ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <CheckSquare className="h-4 w-4 text-slate-400" />
+                    )}
                     <span
                       className={`text-sm font-semibold ${
-                        task.status === 'done'
-                          ? 'text-slate-400 line-through'
-                          : 'text-slate-900'
+                        task.status === 'done' ? 'text-slate-400 line-through' : 'text-slate-900'
                       }`}
                     >
                       {task.title}
                     </span>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase ${
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                         PRIORITY_BADGE_CLASS[task.priority]
                       }`}
                     >
                       {task.priority}
                     </span>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        task.source === 'copilot'
-                          ? 'bg-indigo-100 text-indigo-800'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      {task.source === 'copilot' && <Bot className="h-3 w-3" />}
-                      {task.source}
-                    </span>
+                    {task.source === 'copilot' ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200/80">
+                        <Sparkles className="h-3 w-3 text-indigo-500" />
+                        AI Copilot
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200/80">
+                        Manual
+                      </span>
+                    )}
                   </div>
                   {task.description && (
-                    <p className="text-xs text-slate-600">{task.description}</p>
+                    <p className="text-xs leading-relaxed text-slate-600">{task.description}</p>
                   )}
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 tabular-nums">
                     <span>
                       Owner: <strong className="text-slate-700">{task.owner_name}</strong>
                     </span>
@@ -711,12 +763,12 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                       </span>
                     )}
                     {task.linked_brand_id && (
-                      <span className="font-mono text-indigo-600">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-indigo-700">
                         Brand: {task.linked_brand_id}
                       </span>
                     )}
                     {task.linked_opportunity_id && (
-                      <span className="font-mono text-indigo-600">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-indigo-700">
                         Opp: {task.linked_opportunity_id}
                       </span>
                     )}
@@ -733,7 +785,13 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                         e.target.value as 'todo' | 'in_progress' | 'done'
                       )
                     }
-                    className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none"
+                    className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none transition ${
+                      task.status === 'done'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                        : task.status === 'in_progress'
+                          ? 'border-indigo-200 bg-indigo-50 text-indigo-800'
+                          : 'border-slate-200 bg-slate-50 text-slate-800'
+                    }`}
                   >
                     <option value="todo">To Do</option>
                     <option value="in_progress">In Progress</option>
@@ -743,7 +801,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                     type="button"
                     onClick={() => openEditTaskModal(task)}
                     aria-label="Edit task"
-                    className="rounded-lg border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-200 p-1.5 text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                   >
                     <Edit3 className="h-3.5 w-3.5" />
                   </button>
@@ -751,7 +809,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                     type="button"
                     onClick={() => handleDeleteTask(task.task_id)}
                     aria-label="Delete task"
-                    className="rounded-lg border border-slate-200 p-1.5 text-rose-600 hover:bg-rose-50"
+                    className="rounded-lg border border-slate-200 p-1.5 text-rose-600 transition hover:border-rose-200 hover:bg-rose-50"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -764,15 +822,19 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
 
       {/* Add Opportunity Modal */}
       {addOppOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-xs">
           <form
             onSubmit={handleCreateOpportunity}
-            className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
+            className="w-full max-w-lg rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-900">Add New Opportunity</h3>
-              <button type="button" onClick={() => setAddOppOpen(false)}>
-                <X className="h-4 w-4 text-slate-500" />
+              <button
+                type="button"
+                onClick={() => setAddOppOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -781,7 +843,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={newOppBrandId}
                   onChange={(e) => handleBrandSelectForNewOpp(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   {reference.brands.map((b) => (
                     <option key={b.brand_id} value={b.brand_id}>
@@ -798,7 +860,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                   required
                   value={newOppName}
                   onChange={(e) => setNewOppName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 />
               </label>
 
@@ -807,7 +869,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={newOppContactId}
                   onChange={(e) => setNewOppContactId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   <option value="">None / Unspecified</option>
                   {filteredContactsForNewOpp.map((c) => (
@@ -823,7 +885,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={newOppCampaignId}
                   onChange={(e) => setNewOppCampaignId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   {reference.campaigns.map((c) => (
                     <option key={c.sponsor_campaign_id} value={c.sponsor_campaign_id}>
@@ -838,7 +900,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={newOppDealType}
                   onChange={(e) => setNewOppDealType(e.target.value as DealType)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   <option value="cash">Cash</option>
                   <option value="in_kind">In-Kind</option>
@@ -850,7 +912,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={newOppStage}
                   onChange={(e) => setNewOppStage(e.target.value as OpportunityStage)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   {STAGE_ORDER.map((st) => (
                     <option key={st} value={st}>
@@ -869,7 +931,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                   step={1000}
                   value={newOppValue}
                   onChange={(e) => setNewOppValue(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 tabular-nums outline-none focus:border-indigo-500"
                 />
               </label>
 
@@ -878,7 +940,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={newOppOwner}
                   onChange={(e) => setNewOppOwner(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   {reference.owners.map((o) => (
                     <option key={o} value={o}>
@@ -892,14 +954,14 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
               <button
                 type="button"
                 onClick={() => setAddOppOpen(false)}
-                className="rounded-lg border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={creatingOpp}
-                className="rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
               >
                 {creatingOpp ? 'Creating...' : 'Create Opportunity'}
               </button>
@@ -910,17 +972,21 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
 
       {/* Create / Edit Task Modal */}
       {taskModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-xs">
           <form
             onSubmit={handleSaveTask}
-            className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
+            className="w-full max-w-lg rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-900">
                 {editingTask ? 'Edit Task' : 'Create Growth Task'}
               </h3>
-              <button type="button" onClick={() => setTaskModalOpen(false)}>
-                <X className="h-4 w-4 text-slate-500" />
+              <button
+                type="button"
+                onClick={() => setTaskModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
               </button>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -932,7 +998,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                   value={taskTitle}
                   onChange={(e) => setTaskTitle(e.target.value)}
                   placeholder="e.g., Qualify positive reply from brand A042"
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 />
               </label>
 
@@ -942,7 +1008,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                   rows={2}
                   value={taskDesc}
                   onChange={(e) => setTaskDesc(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 />
               </label>
 
@@ -951,7 +1017,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={taskOwner}
                   onChange={(e) => setTaskOwner(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   {reference.owners.map((o) => (
                     <option key={o} value={o}>
@@ -966,7 +1032,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={taskPriority}
                   onChange={(e) => setTaskPriority(e.target.value as 'high' | 'medium' | 'low')}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   <option value="high">High</option>
                   <option value="medium">Medium</option>
@@ -980,7 +1046,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                   type="date"
                   value={taskDueDate}
                   onChange={(e) => setTaskDueDate(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 />
               </label>
 
@@ -989,7 +1055,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={taskBrandId}
                   onChange={(e) => setTaskBrandId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   <option value="">None</option>
                   {reference.brands.map((b) => (
@@ -1005,7 +1071,7 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
                 <select
                   value={taskOppId}
                   onChange={(e) => setTaskOppId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 outline-none focus:border-indigo-500"
                 >
                   <option value="">None</option>
                   {opportunities.map((o) => (
@@ -1020,14 +1086,14 @@ export function PipelineTab({ data, onRefresh }: PipelineTabProps) {
               <button
                 type="button"
                 onClick={() => setTaskModalOpen(false)}
-                className="rounded-lg border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={savingTask}
-                className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
               >
                 {savingTask ? 'Saving...' : editingTask ? 'Save Changes' : 'Create Task'}
               </button>

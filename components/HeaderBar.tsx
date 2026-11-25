@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import {
-  Bot,
-  Calendar,
   AlertTriangle,
   BarChart3,
+  Bot,
+  Calendar,
   Kanban,
+  Layers,
   RotateCcw,
   ShieldAlert,
   Sparkles,
@@ -15,10 +16,10 @@ import {
 export type TabKey = 'executive' | 'pipeline' | 'strategy';
 
 const PRESET_DATES = [
-  { date: '2025-02-28', label: '28 Feb (Launch Plan)' },
-  { date: '2025-03-15', label: '15 Mar (Plan Shift)' },
-  { date: '2025-04-11', label: '11 Apr (Pre-Fest)' },
-  { date: '2025-04-20', label: '20 Apr (Baseline)' },
+  { date: '2025-02-28', label: 'Feb 28' },
+  { date: '2025-03-15', label: 'Mar 15' },
+  { date: '2025-04-11', label: 'Apr 11' },
+  { date: '2025-04-20', label: 'Apr 20' },
 ];
 
 interface HeaderBarProps {
@@ -57,43 +58,55 @@ export function HeaderBar({
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-3 py-3.5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-1">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
-                  CampusFest Bengaluru — Sponsorship Growth Center
-                </h1>
-                <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                  Synthetic Case Data
-                </span>
+          {/* Top Row: Brand Lockup & Controls */}
+          <div className="flex flex-col gap-3.5 py-3.5 lg:flex-row lg:items-center lg:justify-between">
+            {/* Brand Lockup */}
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white shadow-sm ring-1 ring-slate-900/10">
+                <Layers className="h-4.5 w-4.5 text-indigo-200" />
               </div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                <span>
-                  Snapshot cutoff:{' '}
-                  <strong className="font-medium text-slate-700">
-                    {asOfDate} 23:59:59 IST
-                  </strong>
-                </span>
-                {targetVersion && (
-                  <span>
-                    • Target:{' '}
-                    <strong className="font-medium text-slate-700">{targetVersion}</strong>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
+                    CampusFest Bengaluru
+                  </h1>
+                  <span className="text-slate-300">/</span>
+                  <span className="text-sm font-medium text-slate-600">
+                    Sponsorship Growth Center
                   </span>
-                )}
-                <span>
-                  • Source integrity:{' '}
-                  <strong className="font-medium text-emerald-700">
-                    {duplicatesRemoved} exact duplicate IDs deduplicated
-                  </strong>
-                </span>
+                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Synthetic Case Data
+                  </span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 tabular-nums">
+                  <span>
+                    IST Cutoff:{' '}
+                    <strong className="font-semibold text-slate-700">{asOfDate} 23:59</strong>
+                  </span>
+                  {targetVersion && (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-slate-300">•</span>
+                      <span>
+                        Plan: <strong className="font-semibold text-slate-700">{targetVersion}</strong>
+                      </span>
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-slate-300">•</span>
+                    <span className="font-medium text-emerald-700">
+                      {duplicatesRemoved} retry IDs deduplicated
+                    </span>
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Quick date presets */}
-              <div className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+            {/* Right Controls */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Compact Date Snapshot Picker */}
+              <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200/80 bg-slate-100/80 p-1">
                 {PRESET_DATES.map((preset) => {
                   const active = asOfDate === preset.date;
                   return (
@@ -101,17 +114,17 @@ export function HeaderBar({
                       key={preset.date}
                       type="button"
                       onClick={() => onDateChange(preset.date)}
-                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                      className={`rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition ${
                         active
-                          ? 'bg-slate-900 text-white shadow-xs'
-                          : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                          ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       {preset.label}
                     </button>
                   );
                 })}
-                <label className="relative ml-1 flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+                <label className="ml-0.5 flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1 text-xs text-slate-700 shadow-2xs">
                   <Calendar className="h-3.5 w-3.5 text-slate-400" />
                   <input
                     type="date"
@@ -122,101 +135,124 @@ export function HeaderBar({
                     onChange={(e) => {
                       if (e.target.value) onDateChange(e.target.value);
                     }}
-                    className="bg-transparent text-xs font-medium text-slate-800 outline-none"
+                    className="bg-transparent font-mono text-xs font-medium text-slate-800 outline-none tabular-nums"
                   />
                 </label>
               </div>
 
+              {/* Subtle Reset Button */}
               <button
                 type="button"
                 onClick={() => setConfirmResetOpen(true)}
                 disabled={isResetting || isLoading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
               >
                 <RotateCcw className={`h-3.5 w-3.5 ${isResetting ? 'animate-spin' : ''}`} />
                 {isResetting ? 'Resetting...' : 'Reset to Baseline'}
               </button>
 
+              {/* Prominent AI Copilot Button */}
               <button
                 type="button"
                 onClick={onToggleCopilot}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-indigo-700"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950 px-3.5 py-2 text-xs font-semibold text-white shadow-sm ring-1 ring-slate-900/20 transition hover:from-slate-800 hover:to-indigo-900"
               >
-                <Bot className="h-3.5 w-3.5" />
-                AI Copilot
-                <Sparkles className="h-3 w-3 text-indigo-200" />
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
+                <Bot className="h-3.5 w-3.5 text-indigo-200" />
+                <span>AI Copilot</span>
+                <Sparkles className="h-3 w-3 text-indigo-300" />
               </button>
             </div>
           </div>
 
-          {/* 3 Main Navigation Tabs */}
-          <nav className="-mb-px flex gap-6 overflow-x-auto" aria-label="Dashboard sections">
-            <button
-              type="button"
-              onClick={() => onTabChange('executive')}
-              className={`inline-flex items-center gap-2 border-b-2 py-2.5 text-sm font-medium whitespace-nowrap transition ${
-                activeTab === 'executive'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
-              }`}
+          {/* Bottom Row: Segmented Pill Tab Bar */}
+          <div className="pb-3">
+            <nav
+              className="inline-flex w-full overflow-x-auto rounded-xl border border-slate-200/80 bg-slate-100/80 p-1 sm:w-auto"
+              aria-label="Dashboard sections"
             >
-              <BarChart3 className="h-4 w-4" />
-              Executive Funnel &amp; Diagnostics
-            </button>
+              <button
+                type="button"
+                onClick={() => onTabChange('executive')}
+                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
+                  activeTab === 'executive'
+                    ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BarChart3
+                  className={`h-3.5 w-3.5 ${
+                    activeTab === 'executive' ? 'text-indigo-600' : 'text-slate-400'
+                  }`}
+                />
+                Executive Funnel &amp; Diagnostics
+              </button>
 
-            <button
-              type="button"
-              onClick={() => onTabChange('pipeline')}
-              className={`inline-flex items-center gap-2 border-b-2 py-2.5 text-sm font-medium whitespace-nowrap transition ${
-                activeTab === 'pipeline'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
-              }`}
-            >
-              <Kanban className="h-4 w-4" />
-              Pipeline, Campaigns &amp; Execution
-            </button>
+              <button
+                type="button"
+                onClick={() => onTabChange('pipeline')}
+                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
+                  activeTab === 'pipeline'
+                    ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Kanban
+                  className={`h-3.5 w-3.5 ${
+                    activeTab === 'pipeline' ? 'text-indigo-600' : 'text-slate-400'
+                  }`}
+                />
+                Pipeline, Campaigns &amp; Execution
+              </button>
 
-            <button
-              type="button"
-              onClick={() => onTabChange('strategy')}
-              className={`inline-flex items-center gap-2 border-b-2 py-2.5 text-sm font-medium whitespace-nowrap transition ${
-                activeTab === 'strategy'
-                  ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900'
-              }`}
-            >
-              <ShieldAlert className="h-4 w-4" />
-              Strategy Bets &amp; Early Warning
-              {breachedSignalsCount > 0 && (
-                <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">
-                  {breachedSignalsCount}
-                </span>
-              )}
-            </button>
-          </nav>
+              <button
+                type="button"
+                onClick={() => onTabChange('strategy')}
+                className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition ${
+                  activeTab === 'strategy'
+                    ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShieldAlert
+                  className={`h-3.5 w-3.5 ${
+                    activeTab === 'strategy' ? 'text-indigo-600' : 'text-slate-400'
+                  }`}
+                />
+                Strategy Bets &amp; Early Warning
+                {breachedSignalsCount > 0 && (
+                  <span className="inline-flex items-center rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 tabular-nums">
+                    {breachedSignalsCount}
+                  </span>
+                )}
+              </button>
+            </nav>
+          </div>
         </div>
       </header>
 
       {/* Reset Confirmation Modal */}
       {confirmResetOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="flex items-start gap-3">
-              <div className="rounded-full bg-amber-100 p-2 text-amber-700">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3.5">
+              <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700">
                 <AlertTriangle className="h-5 w-5" />
               </div>
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
                   Reset Database to Baseline?
                 </h2>
-                <p className="mt-1.5 text-sm text-slate-600">
-                  This will restore all tables directly from{' '}
-                  <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-600">
+                  This restores all Supabase tables directly from{' '}
+                  <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-800">
                     Sponsor Dataset.xlsx
                   </code>{' '}
-                  (deduplicating the 6 retry IDs). Any added opportunities, stage edits, logged
-                  cash receipts, activation approvals, and tasks will be cleared.
+                  (removing the 6 retry duplicates). Added deals, stage changes, logged cash
+                  receipts, activation approvals, and tasks will be cleared.
                 </p>
               </div>
             </div>
@@ -225,7 +261,7 @@ export function HeaderBar({
                 type="button"
                 onClick={() => setConfirmResetOpen(false)}
                 disabled={isResetting}
-                className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
@@ -233,7 +269,7 @@ export function HeaderBar({
                 type="button"
                 onClick={handleConfirmReset}
                 disabled={isResetting}
-                className="rounded-lg bg-rose-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                className="rounded-lg bg-rose-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50"
               >
                 {isResetting ? 'Restoring Baseline...' : 'Confirm Reset'}
               </button>

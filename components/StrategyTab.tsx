@@ -20,11 +20,14 @@ interface StrategyTabProps {
   onRefresh: () => Promise<void>;
 }
 
+const CARD_SURFACE =
+  'rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
+
 interface StrategyBet {
   rank: number;
   title: string;
   campaigns: string;
-  decision: 'Double Down' | 'Cap' | 'Kill';
+  decision: 'Double Down' | 'Pilot / Cap' | 'Reject / Kill';
   riceScore: number;
   riceFormula: string;
   baseTargetLakhs: number;
@@ -73,7 +76,7 @@ const RANKED_BETS: StrategyBet[] = [
     rank: 4,
     title: 'LinkedIn Executive Outreach',
     campaigns: 'SC03',
-    decision: 'Cap',
+    decision: 'Pilot / Cap',
     riceScore: 34,
     riceFormula: 'R: 54 • I: 1.0 • C: 50% • E: 0.8',
     baseTargetLakhs: 1.5,
@@ -85,7 +88,7 @@ const RANKED_BETS: StrategyBet[] = [
     rank: 5,
     title: 'Cold Email Volume Blasts',
     campaigns: 'SC01, SC06',
-    decision: 'Kill',
+    decision: 'Reject / Kill',
     riceScore: 12,
     riceFormula: 'R: 268 • I: 0.25 • C: 40% • E: 2.2',
     baseTargetLakhs: 0.0,
@@ -96,32 +99,29 @@ const RANKED_BETS: StrategyBet[] = [
 ];
 
 const DECISION_BADGE: Record<StrategyBet['decision'], string> = {
-  'Double Down': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  Cap: 'bg-amber-100 text-amber-800 border-amber-200',
-  Kill: 'bg-rose-100 text-rose-800 border-rose-200',
+  'Double Down': 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  'Pilot / Cap': 'bg-amber-50 text-amber-800 ring-1 ring-amber-200',
+  'Reject / Kill': 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
 };
 
 const SIGNAL_STYLES: Record<
   SignalStatus,
-  { border: string; bg: string; badge: string; label: string }
+  { accent: string; badge: string; label: string }
 > = {
   green: {
-    border: 'border-emerald-200',
-    bg: 'bg-emerald-50/40',
-    badge: 'bg-emerald-100 text-emerald-800',
-    label: 'GREEN',
+    accent: 'border-l-4 border-l-emerald-500',
+    badge: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+    label: 'SCALE',
   },
   amber: {
-    border: 'border-amber-200',
-    bg: 'bg-amber-50/40',
-    badge: 'bg-amber-100 text-amber-800',
-    label: 'AMBER',
+    accent: 'border-l-4 border-l-amber-500',
+    badge: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200',
+    label: 'CHANGE',
   },
   red: {
-    border: 'border-rose-200',
-    bg: 'bg-rose-50/50',
-    badge: 'bg-rose-100 text-rose-800',
-    label: 'RED',
+    accent: 'border-l-4 border-l-rose-500',
+    badge: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
+    label: 'STOP',
   },
 };
 
@@ -188,26 +188,28 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
   return (
     <div className="space-y-6">
       {errorMsg && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           {errorMsg}
         </div>
       )}
 
       {/* 5-Signal Early Warning Monitor */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      <section className={`${CARD_SURFACE} p-6`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
               5-Signal Early Warning System (Live as of {as_of_date})
             </h2>
-            <p className="text-xs text-slate-500">
-              Traffic-light thresholds recalculated live from Supabase via{' '}
-              <code className="font-mono">lib/metrics.ts</code>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Traffic-light operating thresholds computed deterministically from Supabase via{' '}
+              <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] text-slate-700">
+                lib/metrics.ts
+              </code>
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 tabular-nums">
             <ShieldAlert className="h-3.5 w-3.5 text-slate-500" />
-            {bottlenecks.breached_signals.length} signal(s) requiring attention
+            {bottlenecks.breached_signals.length} signal(s) requiring action
           </span>
         </div>
 
@@ -217,11 +219,13 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
             return (
               <div
                 key={sig.id}
-                className={`flex flex-col justify-between rounded-xl border p-4 ${style.border} ${style.bg}`}
+                className={`flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${style.accent}`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-slate-900">{sig.name}</h3>
+                    <h3 className="text-xs font-semibold leading-snug text-slate-900">
+                      {sig.name}
+                    </h3>
                     <span
                       className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider ${style.badge}`}
                     >
@@ -232,14 +236,16 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
                     </span>
                   </div>
 
-                  <div className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
+                  <div className="mt-3 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
                     {sig.value_pct !== null ? `${sig.value_pct}%` : 'No data'}
                   </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-slate-700">{sig.detail}</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-600 tabular-nums">
+                    {sig.detail}
+                  </p>
                 </div>
 
-                <div className="mt-3 border-t border-slate-200/70 pt-2 text-[11px] font-medium text-slate-500">
-                  Rule: {sig.threshold_rule}
+                <div className="mt-3 border-t border-slate-100 pt-2 text-[11px] font-medium text-slate-500">
+                  Threshold: {sig.threshold_rule}
                 </div>
               </div>
             );
@@ -247,14 +253,14 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
         </div>
 
         {/* Linked Sponsor Activations Approval Strip */}
-        <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 tabular-nums">
                 Linked Partner Activations ({activations.length} as of {as_of_date})
               </h3>
-              <p className="flex items-center gap-1 text-xs text-slate-500">
-                <Info className="h-3.5 w-3.5 text-slate-400" />
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                <Info className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                 Observational post-confirmation associations only — do not establish causal
                 attendee uplift.
               </p>
@@ -265,7 +271,7 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
             {activations.map((act) => (
               <div
                 key={act.activation_id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5"
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5"
               >
                 <div className="min-w-0">
                   <div className="truncate text-xs font-semibold text-slate-900">
@@ -280,10 +286,10 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
                   type="button"
                   disabled={togglingActivationId === act.activation_id}
                   onClick={() => handleToggleActivation(act.activation_id, !act.plan_approved)}
-                  className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                  className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
                     act.plan_approved
-                      ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                      : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100'
+                      : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100'
                   }`}
                 >
                   {act.plan_approved ? 'Approved' : 'Approve Plan'}
@@ -300,76 +306,83 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
       </section>
 
       {/* 5 Ranked CampusFest Bengaluru Strategy Bets */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      <section className={`${CARD_SURFACE} p-6`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
               5 Ranked Strategy Bets (CampusFest Bengaluru)
             </h2>
-            <p className="text-xs text-slate-500">
-              Prioritized by RICE score with incremental cash targets and capital allocation calls
+            <p className="mt-0.5 text-xs text-slate-500">
+              Prioritized by RICE score with incremental cash targets and clear Double Down / Cap /
+              Kill allocation calls
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-medium text-slate-700">
+          <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums">
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 font-medium text-slate-700">
               <Target className="h-3.5 w-3.5 text-indigo-600" />
-              Base Target: <strong className="text-slate-900">₹27.2L</strong>
+              Base <strong className="font-bold text-slate-900">₹27.2L</strong>
             </span>
-            <span className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-medium text-indigo-800">
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-medium text-indigo-800">
               <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
-              Stretch Target: <strong className="text-indigo-950">₹63.4L</strong>
+              Stretch <strong className="font-bold text-indigo-950">₹63.4L</strong>
             </span>
-            <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
-              Live Confirmed:{' '}
-              <strong>{formatLakhs(summary.financials.confirmed_reported_value_inr)}</strong>
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800">
+              Confirmed{' '}
+              <strong className="font-bold">
+                {formatLakhs(summary.financials.confirmed_reported_value_inr)}
+              </strong>
             </span>
           </div>
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-xs">
+          <table className="min-w-full divide-y divide-slate-200 text-xs tabular-nums">
             <thead>
-              <tr className="bg-slate-50 text-left font-semibold uppercase tracking-wider text-slate-500">
-                <th className="px-3 py-3">Rank</th>
-                <th className="px-3 py-3">Bet / Lever</th>
-                <th className="px-3 py-3">Decision</th>
-                <th className="px-3 py-3 text-right">RICE Score</th>
-                <th className="px-3 py-3 text-right">Base Target</th>
-                <th className="px-3 py-3 text-right">Stretch Target</th>
-                <th className="px-3 py-3">Evidence &amp; Execution Focus</th>
+              <tr className="bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-3.5 py-3">Rank</th>
+                <th className="px-3.5 py-3">Bet / Lever</th>
+                <th className="px-3.5 py-3">Decision</th>
+                <th className="px-3.5 py-3 text-right">RICE</th>
+                <th className="px-3.5 py-3 text-right">Base Target</th>
+                <th className="px-3.5 py-3 text-right">Stretch Target</th>
+                <th className="px-3.5 py-3">Evidence &amp; Execution Focus</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {RANKED_BETS.map((bet) => (
-                <tr key={bet.rank} className="hover:bg-slate-50/70">
-                  <td className="px-3 py-3 font-mono font-bold text-slate-700">#{bet.rank}</td>
-                  <td className="px-3 py-3">
+                <tr key={bet.rank} className="transition hover:bg-slate-50/80">
+                  <td className="px-3.5 py-3.5 font-mono font-bold text-slate-500">
+                    #{bet.rank}
+                  </td>
+                  <td className="px-3.5 py-3.5">
                     <div className="font-semibold text-slate-900">{bet.title}</div>
                     <div className="font-mono text-[11px] text-slate-400">{bet.campaigns}</div>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3.5 py-3.5">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                         DECISION_BADGE[bet.decision]
                       }`}
                     >
                       {bet.decision}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right">
-                    <div className="font-mono text-sm font-bold text-slate-900">
+                  <td className="px-3.5 py-3.5 text-right">
+                    <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-900">
                       {bet.riceScore}
-                    </div>
-                    <div className="text-[10px] text-slate-400">{bet.riceFormula}</div>
+                    </span>
+                    <div className="mt-0.5 text-[10px] text-slate-400">{bet.riceFormula}</div>
                   </td>
-                  <td className="px-3 py-3 text-right font-mono font-semibold text-slate-800">
+                  <td className="px-3.5 py-3.5 text-right font-mono font-semibold text-slate-800">
                     ₹{bet.baseTargetLakhs.toFixed(1)}L
                   </td>
-                  <td className="px-3 py-3 text-right font-mono font-semibold text-indigo-700">
+                  <td className="px-3.5 py-3.5 text-right font-mono font-semibold text-indigo-700">
                     ₹{bet.stretchTargetLakhs.toFixed(1)}L
                   </td>
-                  <td className="max-w-md px-3 py-3 text-slate-600">{bet.rationale}</td>
+                  <td className="max-w-md px-3.5 py-3.5 leading-relaxed text-slate-600">
+                    {bet.rationale}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -378,36 +391,36 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
       </section>
 
       {/* 48-Hour Qualification SLA Monitor */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+      <section className={`${CARD_SURFACE} p-6`}>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900 tabular-nums">
               48-Hour Qualification SLA Monitor (
               {bottlenecks.unqualified_positive_replies.length} Unqualified Positive Replies)
             </h2>
-            <p className="text-xs text-slate-500">
-              Brands that replied positively to outreach as of {as_of_date} whose latest
-              qualification state is not <code className="font-mono">qualified</code>.
+            <p className="mt-0.5 text-xs text-slate-500">
+              Brands that replied positively as of {as_of_date} whose latest qualification state is
+              not <code className="font-mono text-slate-700">qualified</code>.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
-            <Clock className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 tabular-nums">
+            <Clock className="h-3.5 w-3.5 text-amber-600" />
             {bottlenecks.unqualified_positive_replies.filter((r) => r.sla_breached_48h).length}{' '}
             breaching 48h SLA
           </span>
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-xs">
+          <table className="min-w-full divide-y divide-slate-200 text-xs tabular-nums">
             <thead>
-              <tr className="bg-slate-50 text-left font-semibold uppercase tracking-wider text-slate-500">
-                <th className="px-3 py-3">Brand</th>
-                <th className="px-3 py-3">Industry</th>
-                <th className="px-3 py-3">Channel</th>
-                <th className="px-3 py-3">Owner</th>
-                <th className="px-3 py-3">Current Qual. State</th>
-                <th className="px-3 py-3 text-right">Elapsed Since Positive Reply</th>
-                <th className="px-3 py-3 text-right">Action</th>
+              <tr className="bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-3.5 py-3">Brand</th>
+                <th className="px-3.5 py-3">Industry</th>
+                <th className="px-3.5 py-3">Channel</th>
+                <th className="px-3.5 py-3">Owner</th>
+                <th className="px-3.5 py-3">Current Qual. State</th>
+                <th className="px-3.5 py-3 text-right">Elapsed Time</th>
+                <th className="px-3.5 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -415,37 +428,37 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
                 const alreadyAssigned = assignedBrandIds.has(row.brand_id);
                 const isAssigning = assigningBrandId === row.brand_id;
                 return (
-                  <tr key={row.brand_id} className="hover:bg-slate-50/70">
-                    <td className="px-3 py-2.5">
+                  <tr key={row.brand_id} className="transition hover:bg-slate-50/80">
+                    <td className="px-3.5 py-2.5">
                       <span className="font-mono font-semibold text-indigo-700">
                         {row.brand_id}
                       </span>{' '}
-                      <span className="font-medium text-slate-900">{row.brand_name}</span>
+                      <span className="font-semibold text-slate-900">{row.brand_name}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-slate-600">{row.industry}</td>
-                    <td className="px-3 py-2.5 text-slate-700">
+                    <td className="px-3.5 py-2.5 text-slate-600">{row.industry}</td>
+                    <td className="px-3.5 py-2.5 text-slate-700">
                       {CHANNEL_LABELS[row.channel] ?? row.channel}
                     </td>
-                    <td className="px-3 py-2.5 text-slate-700">{row.owner_name}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-700">
+                    <td className="px-3.5 py-2.5 text-slate-700">{row.owner_name}</td>
+                    <td className="px-3.5 py-2.5">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 font-mono text-[11px] font-medium text-slate-700">
                         {row.latest_qualification_status}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-3.5 py-2.5 text-right">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${
                           row.sla_breached_48h
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-200/80'
+                            : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80'
                         }`}
                       >
                         {row.hours_since_positive_reply}h
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-3.5 py-2.5 text-right">
                       {alreadyAssigned ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Task Assigned
                         </span>
@@ -454,7 +467,7 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
                           type="button"
                           disabled={isAssigning}
                           onClick={() => handleAssignFollowUp(row)}
-                          className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-2xs transition hover:bg-indigo-700 disabled:opacity-50"
                         >
                           <PlusCircle className="h-3.5 w-3.5" />
                           {isAssigning ? 'Assigning...' : 'Assign Follow-up Task'}
@@ -477,26 +490,26 @@ export function StrategyTab({ data, onRefresh }: StrategyTabProps) {
 
         {/* Stalled Negotiations Quick List */}
         {bottlenecks.stalled_negotiations.length > 0 && (
-          <div className="mt-5 border-t border-slate-100 pt-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 tabular-nums">
               Active Negotiations ({bottlenecks.stalled_negotiations.length})
             </h3>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
               {bottlenecks.stalled_negotiations.map((neg) => (
                 <div
                   key={neg.opportunity_id}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs"
+                  className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-2.5 text-xs tabular-nums"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-semibold text-indigo-700">
                       {neg.opportunity_id}
                     </span>
-                    <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-800">
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/80">
                       {neg.days_in_stage}d in stage
                     </span>
                   </div>
-                  <div className="mt-0.5 truncate font-medium text-slate-900">{neg.brand_name}</div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <div className="mt-1 truncate font-semibold text-slate-900">{neg.brand_name}</div>
+                  <div className="mt-0.5 flex items-center justify-between text-[11px] text-slate-500">
                     <span>{neg.owner_name}</span>
                     <span className="font-mono font-semibold text-slate-800">
                       {formatInr(neg.value_inr)}

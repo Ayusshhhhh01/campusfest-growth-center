@@ -2,14 +2,14 @@
 
 import React, { useSyncExternalStore } from 'react';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
   Cell,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
 } from 'recharts';
 import {
   AlertCircle,
@@ -31,10 +31,13 @@ interface ExecutiveTabProps {
   onNavigateToPipeline: () => void;
 }
 
-const FUNNEL_COLORS = ['#64748b', '#475569', '#6366f1', '#4f46e5', '#0ea5e9', '#10b981'];
-const INDUSTRY_COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+const FUNNEL_COLORS = ['#64748B', '#475569', '#6366F1', '#4F46E5', '#0EA5E9', '#10B981'];
+const INDUSTRY_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
 
 const emptySubscribe = () => () => {};
+
+const CARD_SURFACE =
+  'rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]';
 
 export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) {
   const mounted = useSyncExternalStore(
@@ -62,6 +65,8 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
   const largest = industry_concentration.largest_sponsor;
   const concRisk = industry_concentration.concentration_risk_level;
 
+  const totalAttempts =
+    outbound_vs_warm.outbound_attempts + outbound_vs_warm.warm_attempts;
   const outboundZero = outbound_vs_warm.outbound_confirmed_deals === 0;
   const warmShareDealsPct =
     populations.confirmed_opportunities > 0
@@ -75,203 +80,270 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
       {/* 4 Hero KPI Cards */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Card 1: Qualified Brands */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Qualified Brands
-            </span>
-            <span className="rounded-lg bg-indigo-50 p-1.5 text-indigo-600">
-              <Building2 className="h-4 w-4" />
-            </span>
+        <div className={`${CARD_SURFACE} flex flex-col justify-between p-5`}>
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Qualified Brands
+              </span>
+              <span className="rounded-lg bg-indigo-50 p-2 text-indigo-600 ring-1 ring-indigo-100">
+                <Building2 className="h-4 w-4" />
+              </span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2 tabular-nums">
+              <span className="text-3xl font-bold tracking-tight text-slate-900">
+                {populations.qualified_brands}
+              </span>
+              <span className="text-sm font-medium text-slate-400">
+                / {targets.qualified_brands_goal} target
+              </span>
+            </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-slate-900">
-              {populations.qualified_brands}
-            </span>
-            <span className="text-sm font-medium text-slate-500">
-              / {targets.qualified_brands_goal} target
-            </span>
-          </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full ${
-                qualDelta >= 0 ? 'bg-emerald-500' : 'bg-indigo-600'
-              }`}
-              style={{ width: `${qualPct}%` }}
-            />
-          </div>
-          <div className="mt-2.5 flex items-center justify-between text-xs">
-            <span
-              className={`font-semibold ${
-                qualDelta >= 0 ? 'text-emerald-700' : 'text-amber-700'
-              }`}
-            >
-              {qualDelta >= 0 ? `+${qualDelta} ahead of goal` : `${qualDelta} vs goal`}
-            </span>
-            <span className="text-slate-500">{targets.target_version ?? 'Target'}</span>
+
+          <div className="mt-4">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  qualDelta >= 0 ? 'bg-emerald-500' : 'bg-indigo-600'
+                }`}
+                style={{ width: `${qualPct}%` }}
+              />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between text-xs tabular-nums">
+              <span
+                className={`inline-flex items-center rounded-md px-1.5 py-0.5 font-semibold ${
+                  qualDelta >= 0
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-amber-50 text-amber-700'
+                }`}
+              >
+                {qualDelta >= 0 ? `+${qualDelta} ahead` : `${qualDelta} vs goal`}
+              </span>
+              <span className="truncate text-slate-500">{targets.target_version ?? 'Target'}</span>
+            </div>
           </div>
         </div>
 
         {/* Card 2: Confirmed Partnerships */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Confirmed Partnerships
-            </span>
-            <span className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600">
-              <Handshake className="h-4 w-4" />
-            </span>
+        <div className={`${CARD_SURFACE} flex flex-col justify-between p-5`}>
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Confirmed Partnerships
+              </span>
+              <span className="rounded-lg bg-emerald-50 p-2 text-emerald-600 ring-1 ring-emerald-100">
+                <Handshake className="h-4 w-4" />
+              </span>
+            </div>
+            <div className="mt-3 flex items-baseline gap-2 tabular-nums">
+              <span className="text-3xl font-bold tracking-tight text-slate-900">
+                {populations.confirmed_opportunities}
+              </span>
+              <span className="text-sm font-medium text-slate-400">
+                / {targets.confirmed_partnerships_goal} target
+              </span>
+            </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-slate-900">
-              {populations.confirmed_opportunities}
-            </span>
-            <span className="text-sm font-medium text-slate-500">
-              / {targets.confirmed_partnerships_goal} target
-            </span>
-          </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full ${
-                confDelta >= 0 ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}
-              style={{ width: `${confPct}%` }}
-            />
-          </div>
-          <div className="mt-2.5 flex items-center justify-between text-xs">
-            <span
-              className={`font-semibold ${
-                confDelta >= 0 ? 'text-emerald-700' : 'text-amber-700'
-              }`}
-            >
-              {confDelta >= 0 ? `+${confDelta} vs goal` : `${confDelta} behind goal`}
-            </span>
-            <span className="text-slate-500">
-              {integrity_checks.stage_breakdown.withdrawn > 0
-                ? `${integrity_checks.stage_breakdown.withdrawn} withdrawn`
-                : `${populations.opportunities} total opps`}
-            </span>
+
+          <div className="mt-4">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  confDelta >= 0 ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
+                style={{ width: `${confPct}%` }}
+              />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between text-xs tabular-nums">
+              <span
+                className={`inline-flex items-center rounded-md px-1.5 py-0.5 font-semibold ${
+                  confDelta >= 0
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-amber-50 text-amber-700'
+                }`}
+              >
+                {confDelta >= 0 ? `+${confDelta} vs goal` : `${confDelta} behind goal`}
+              </span>
+              <span className="text-slate-500">
+                {integrity_checks.stage_breakdown.withdrawn > 0
+                  ? `${integrity_checks.stage_breakdown.withdrawn} withdrawn`
+                  : `${populations.opportunities} total opps`}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Card 3: Reported Deal Value */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Reported Deal Value
-            </span>
-            <span className="rounded-lg bg-sky-50 p-1.5 text-sky-600">
-              <IndianRupee className="h-4 w-4" />
-            </span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tracking-tight text-slate-900">
+        <div className={`${CARD_SURFACE} flex flex-col justify-between p-5`}>
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Reported Deal Value
+              </span>
+              <span className="rounded-lg bg-sky-50 p-2 text-sky-600 ring-1 ring-sky-100">
+                <IndianRupee className="h-4 w-4" />
+              </span>
+            </div>
+            <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
               {formatInr(financials.confirmed_reported_value_inr)}
-            </span>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2 text-xs">
-            <div>
-              <div className="text-slate-500">Cash ({financials.confirmed_cash_deals})</div>
-              <div className="font-semibold text-slate-800">
-                {formatInr(financials.confirmed_cash_value_inr)}
-              </div>
-            </div>
-            <div>
-              <div className="text-slate-500">In-Kind ({financials.confirmed_in_kind_deals})</div>
-              <div className="font-semibold text-slate-800">
-                {formatInr(financials.confirmed_in_kind_value_inr)}
-              </div>
             </div>
           </div>
-          <div className="mt-2 text-xs text-slate-500">
-            Face value across confirmed deals (not bank receipt)
+
+          <div className="mt-3">
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 text-xs tabular-nums">
+              <div>
+                <div className="text-[11px] text-slate-500">
+                  Cash ({financials.confirmed_cash_deals})
+                </div>
+                <div className="mt-0.5 font-semibold text-slate-900">
+                  {formatInr(financials.confirmed_cash_value_inr)}
+                </div>
+              </div>
+              <div className="border-l border-slate-200/80 pl-2.5">
+                <div className="text-[11px] text-slate-500">
+                  In-Kind ({financials.confirmed_in_kind_deals})
+                </div>
+                <div className="mt-0.5 font-semibold text-slate-900">
+                  {formatInr(financials.confirmed_in_kind_value_inr)}
+                </div>
+              </div>
+            </div>
+            <div className="mt-2 text-[11px] text-slate-500">
+              Face value across confirmed deals (not bank receipt)
+            </div>
           </div>
         </div>
 
         {/* Card 4: Verified Cash Collected */}
         <div
-          className={`rounded-xl border p-5 shadow-xs ${
-            hasReceipts ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'
+          className={`${CARD_SURFACE} flex flex-col justify-between p-5 ${
+            hasReceipts
+              ? 'border-emerald-200/90 bg-emerald-50/25'
+              : 'border-amber-200/90 bg-amber-50/20'
           }`}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-              Verified Cash Collected
-            </span>
-            <span
-              className={`rounded-lg p-1.5 ${
-                hasReceipts ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-              }`}
-            >
-              <Banknote className="h-4 w-4" />
-            </span>
-          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Verified Cash Collected
+              </span>
+              <span
+                className={`rounded-lg p-2 ring-1 ${
+                  hasReceipts
+                    ? 'bg-emerald-50 text-emerald-600 ring-emerald-200'
+                    : 'bg-amber-50 text-amber-600 ring-amber-200'
+                }`}
+              >
+                <Banknote className="h-4 w-4" />
+              </span>
+            </div>
 
-          {hasReceipts ? (
-            <>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-3xl font-bold tracking-tight text-emerald-900">
-                  {formatInr(financials.verified_cash_collected_inr)}
-                </span>
-              </div>
-              <div className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-emerald-800">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>
-                  Logged across {financials.cash_receipts_logged_deals} deal(s) •{' '}
-                  {financials.confirmed_cash_value_inr > 0
-                    ? `${Math.round(
-                        ((financials.verified_cash_collected_inr ?? 0) /
-                          financials.confirmed_cash_value_inr) *
-                          100
-                      )}% of cash deals`
-                    : 'Live receipt'}
-                </span>
-              </div>
-            </>
-          ) : (
-            <>
+            {hasReceipts ? (
               <div className="mt-3">
-                <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1 text-sm font-semibold text-amber-900">
-                  <AlertCircle className="h-4 w-4" />
-                  Not recorded in source data
-                </span>
+                <div className="text-3xl font-bold tracking-tight text-emerald-950 tabular-nums">
+                  {formatInr(financials.verified_cash_collected_inr)}
+                </div>
+                <div className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-emerald-800 tabular-nums">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                  <span>
+                    {financials.cash_receipts_logged_deals} deal(s) logged •{' '}
+                    {financials.confirmed_cash_value_inr > 0
+                      ? `${Math.round(
+                          ((financials.verified_cash_collected_inr ?? 0) /
+                            financials.confirmed_cash_value_inr) *
+                            100
+                        )}% of cash value`
+                      : 'Live receipt'}
+                  </span>
+                </div>
               </div>
-              <p className="mt-2.5 text-xs text-amber-800">
-                Source dataset sets <code className="font-mono">cash_collected_inr = NULL</code>.
-                Reported {formatLakhs(financials.confirmed_cash_value_inr)} cash is not bank proof.
-              </p>
-            </>
-          )}
+            ) : (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                  Not recorded in source
+                </span>
+                <p className="mt-2.5 text-xs leading-relaxed text-slate-600 tabular-nums">
+                  <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] text-slate-800">
+                    cash_collected_inr
+                  </code>{' '}
+                  is <code className="font-mono text-[11px]">NULL</code>.{' '}
+                  {formatLakhs(financials.confirmed_cash_value_inr)} cash is contracted only.
+                </p>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
             onClick={onNavigateToPipeline}
-            className="mt-2.5 inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 transition hover:text-indigo-800"
           >
-            Log cash receipts in Pipeline <ArrowRight className="h-3 w-3" />
+            Log cash receipts in Pipeline <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </section>
 
-      {/* Funnel Chart + Population Integrity Strip */}
+      {/* High-Contrast Executive Diagnostic Callout Banner */}
+      <section className="rounded-xl bg-slate-900 px-5 py-4 text-white shadow-sm ring-1 ring-slate-900/10 sm:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Core Growth Diagnostic • {summary.as_of_date}
+            </div>
+            <p className="text-sm font-semibold tracking-tight text-white sm:text-base tabular-nums">
+              {outboundZero && warmShareDealsPct === 100
+                ? `${Math.round(outbound_vs_warm.outbound_effort_share_pct)}% Cold Outbound Effort = ₹0 vs ${Math.round(outbound_vs_warm.warm_effort_share_pct)}% Warm Effort = 100% Revenue`
+                : `${outbound_vs_warm.outbound_effort_share_pct}% Outbound Effort = ${formatInr(outbound_vs_warm.outbound_confirmed_value_inr)} vs ${outbound_vs_warm.warm_effort_share_pct}% Warm Effort = ${formatInr(outbound_vs_warm.warm_confirmed_value_inr)}`}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:items-center tabular-nums">
+            <div className="rounded-lg border border-white/10 bg-white/5 px-3.5 py-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Cold Outbound
+              </div>
+              <div className="mt-0.5 text-sm font-bold text-rose-300">
+                {outbound_vs_warm.outbound_attempts} touches →{' '}
+                {formatInr(outbound_vs_warm.outbound_confirmed_value_inr)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3.5 py-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                Warm Channels
+              </div>
+              <div className="mt-0.5 text-sm font-bold text-emerald-300">
+                {outbound_vs_warm.warm_attempts} touches →{' '}
+                {formatInr(outbound_vs_warm.warm_confirmed_value_inr)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Funnel Chart + Population Integrity Panel */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs lg:col-span-2">
+        <div className={`${CARD_SURFACE} p-6 lg:col-span-2`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold tracking-tight text-slate-900">
                 Sponsor Acquisition Funnel (IST Point-in-Time)
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-slate-500">
                 Distinct entity populations from total brands through confirmed partnerships
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <Layers className="h-4 w-4 text-indigo-600" />
+            <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs text-slate-600 tabular-nums">
+              <Layers className="h-3.5 w-3.5 text-indigo-600" />
               <span>
-                Overall Brand → Confirmed:{' '}
-                <strong className="text-slate-900">
+                Brand → Confirmed:{' '}
+                <strong className="font-semibold text-slate-900">
                   {populations.total_brands > 0
-                    ? ((populations.confirmed_opportunities / populations.total_brands) * 100).toFixed(1)
+                    ? (
+                        (populations.confirmed_opportunities / populations.total_brands) *
+                        100
+                      ).toFixed(1)
                     : '0.0'}
                   %
                 </strong>
@@ -279,31 +351,43 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
             </div>
           </div>
 
-          <div className="mt-4 h-72 w-full">
+          <div className="mt-5 h-72 w-full">
             {mounted ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={funnel}
                   layout="vertical"
-                  margin={{ top: 8, right: 32, left: 24, bottom: 8 }}
+                  margin={{ top: 4, right: 28, left: 16, bottom: 4 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: '#475569' }} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: '#64748B' }} />
                   <YAxis
                     type="category"
                     dataKey="step"
-                    width={132}
-                    tick={{ fontSize: 12, fill: '#0f172a', fontWeight: 500 }}
+                    width={136}
+                    tick={{ fontSize: 12, fill: '#334155', fontWeight: 500 }}
                   />
                   <Tooltip
-                    formatter={(value) => [String(value ?? 0), 'Count']}
-                    contentStyle={{
-                      borderRadius: '8px',
-                      borderColor: '#e2e8f0',
-                      fontSize: '12px',
+                    cursor={{ fill: '#F1F5F9' }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const item = payload[0].payload as (typeof funnel)[number];
+                      return (
+                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg tabular-nums">
+                          <div className="font-semibold text-slate-900">{item.step}</div>
+                          <div className="mt-0.5 text-slate-600">
+                            Count: <strong className="text-slate-900">{item.count}</strong>
+                          </div>
+                          {item.conversion_from_prev_pct !== null && (
+                            <div className="text-indigo-600">
+                              Step conversion: {item.conversion_from_prev_pct}%
+                            </div>
+                          )}
+                        </div>
+                      );
                     }}
                   />
-                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={28}>
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={26}>
                     {funnel.map((entry, idx) => (
                       <Cell key={entry.step} fill={FUNNEL_COLORS[idx % FUNNEL_COLORS.length]} />
                     ))}
@@ -317,14 +401,20 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
             )}
           </div>
 
-          {/* Step conversion badges */}
-          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 sm:grid-cols-6">
+          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 sm:grid-cols-6 tabular-nums">
             {funnel.map((f) => (
-              <div key={f.step} className="rounded-lg bg-slate-50 px-2.5 py-2 text-center">
-                <div className="truncate text-[11px] font-medium text-slate-500">{f.step}</div>
-                <div className="text-sm font-bold text-slate-900">{f.count}</div>
+              <div
+                key={f.step}
+                className="rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2 text-center"
+              >
+                <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  {f.step}
+                </div>
+                <div className="mt-0.5 text-base font-bold text-slate-900">{f.count}</div>
                 <div className="text-[11px] font-medium text-indigo-600">
-                  {f.conversion_from_prev_pct === null ? 'Base' : `${f.conversion_from_prev_pct}% step`}
+                  {f.conversion_from_prev_pct === null
+                    ? 'Base'
+                    : `${f.conversion_from_prev_pct}% step`}
                 </div>
               </div>
             ))}
@@ -332,128 +422,207 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
         </div>
 
         {/* Separate Populations & Integrity Panel */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <h2 className="text-base font-semibold text-slate-900">
-            Population &amp; Integrity Checks
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Separate populations enforced — touches never inflated as brands
-          </p>
+        <div className={`${CARD_SURFACE} flex flex-col justify-between p-6`}>
+          <div>
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+              Population &amp; Integrity Checks
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Separate populations enforced — touches never inflated as brands
+            </p>
 
-          <dl className="mt-4 space-y-2.5 text-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <dt className="text-slate-600">Outreach Attempts</dt>
-              <dd className="font-semibold text-slate-900">{populations.attempts}</dd>
-            </div>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <dt className="text-slate-600">Unique Contacts Touched</dt>
-              <dd className="font-semibold text-slate-900">
-                {populations.unique_contacts_touched}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <dt className="text-slate-600">Positive Reply Brands</dt>
-              <dd className="font-semibold text-slate-900">{populations.positive_reply_brands}</dd>
-            </div>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <dt className="text-slate-600">Unqualified Positive Replies</dt>
-              <dd className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                {integrity_checks.unqualified_positive_reply_brands} brands
-              </dd>
-            </div>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <dt className="text-slate-600">Opps w/ Unqualified Brand</dt>
-              <dd className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                {integrity_checks.brands_with_opportunities_not_qualified} brands
-              </dd>
-            </div>
-            <div className="flex items-center justify-between pt-1">
-              <dt className="text-slate-600">Active Pipeline Value</dt>
-              <dd className="font-semibold text-indigo-700">
-                {formatInr(financials.active_pipeline_proposed_inr)}
-              </dd>
-            </div>
-          </dl>
+            <dl className="mt-5 space-y-3 text-sm tabular-nums">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <dt className="text-xs font-medium text-slate-600">Outreach Attempts</dt>
+                <dd className="font-semibold text-slate-900">{populations.attempts}</dd>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <dt className="text-xs font-medium text-slate-600">Unique Contacts Touched</dt>
+                <dd className="font-semibold text-slate-900">
+                  {populations.unique_contacts_touched}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <dt className="text-xs font-medium text-slate-600">Positive Reply Brands</dt>
+                <dd className="font-semibold text-slate-900">
+                  {populations.positive_reply_brands}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <dt className="text-xs font-medium text-slate-600">
+                  Unqualified Positive Replies
+                </dt>
+                <dd className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200/80">
+                  {integrity_checks.unqualified_positive_reply_brands} brands
+                </dd>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <dt className="text-xs font-medium text-slate-600">
+                  Opps w/ Unqualified Brand
+                </dt>
+                <dd className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                  {integrity_checks.brands_with_opportunities_not_qualified} brands
+                </dd>
+              </div>
+              <div className="flex items-center justify-between pt-1">
+                <dt className="text-xs font-medium text-slate-600">Active Pipeline Value</dt>
+                <dd className="text-base font-bold text-indigo-700">
+                  {formatInr(financials.active_pipeline_proposed_inr)}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+            History snapshots use latest version per entity with{' '}
+            <code className="font-mono text-slate-700">effective_at &lt;= cutoff</code>.
+          </div>
         </div>
       </section>
 
-      {/* Channel Performance Table + Diagnostic Callout */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Channel Performance Table */}
+      <section className={`${CARD_SURFACE} p-6`}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Channel Performance Matrix</h2>
-            <p className="text-xs text-slate-500">
-              Attempts, reply classifications, qualifications, and confirmed deal conversion by
-              acquisition channel
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+              Channel Performance Matrix
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Outreach volume, reply classification, qualification yield, and confirmed deal
+              revenue by channel
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-900">
-            <TrendingUp className="h-4 w-4 shrink-0 text-rose-600" />
-            <span>
-              {outboundZero && warmShareDealsPct === 100
-                ? `${Math.round(outbound_vs_warm.outbound_effort_share_pct)}% outbound effort = ₹0; ${Math.round(outbound_vs_warm.warm_effort_share_pct)}% warm effort = 100% of deals`
-                : `${outbound_vs_warm.outbound_effort_share_pct}% outbound effort = ${formatInr(outbound_vs_warm.outbound_confirmed_value_inr)} (${outbound_vs_warm.outbound_confirmed_deals} deals); ${outbound_vs_warm.warm_effort_share_pct}% warm effort = ${formatInr(outbound_vs_warm.warm_confirmed_value_inr)} (${outbound_vs_warm.warm_confirmed_deals} deals)`}
-            </span>
-          </div>
+          <span className="text-xs font-medium text-slate-500 tabular-nums">
+            Total attempts: <strong className="text-slate-900">{totalAttempts}</strong>
+          </span>
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <table className="min-w-full divide-y divide-slate-200 text-sm tabular-nums">
             <thead>
-              <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <tr className="bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <th className="px-4 py-3">Channel</th>
                 <th className="px-4 py-3 text-right">Attempts</th>
                 <th className="px-4 py-3 text-right">Reply %</th>
                 <th className="px-4 py-3 text-right">Positive Reply %</th>
                 <th className="px-4 py-3 text-right">Qualified</th>
                 <th className="px-4 py-3 text-right">Opps</th>
-                <th className="px-4 py-3 text-right">Confirmed Deals</th>
+                <th className="px-4 py-3 text-right">Confirmed</th>
+                <th className="px-4 py-3 text-right">Deal Yield</th>
                 <th className="px-4 py-3 text-right">Reported Value</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {channel_performance.channels.map((ch) => {
                 const isOutbound = ch.channel === 'email' || ch.channel === 'linkedin';
+                const dealYield =
+                  ch.attempts > 0 ? ((ch.confirmed_deals / ch.attempts) * 100).toFixed(1) : '0.0';
                 return (
-                  <tr key={ch.channel} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-medium text-slate-900">
+                  <tr key={ch.channel} className="transition hover:bg-slate-50/80">
+                    <td className="px-4 py-3.5 font-medium text-slate-900">
                       <div className="flex items-center gap-2">
                         <span>{CHANNEL_LABELS[ch.channel] ?? ch.channel}</span>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                             isOutbound
                               ? 'bg-slate-100 text-slate-600'
-                              : 'bg-emerald-100 text-emerald-800'
+                              : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70'
                           }`}
                         >
                           {isOutbound ? 'Outbound' : 'Warm'}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-700">
                       {ch.attempts}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-700">
                       {ch.reply_rate_pct.toFixed(1)}%
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-700">
                       {ch.positive_reply_rate_pct.toFixed(1)}%
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-700">
                       {ch.qualified_brands}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-700">
                       {ch.opportunities}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">
+                    <td className="px-4 py-3.5 text-right font-mono text-xs font-semibold text-slate-900">
                       {ch.confirmed_deals}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">
+                    <td className="px-4 py-3.5 text-right">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 font-mono text-[11px] font-semibold ${
+                          ch.confirmed_deals > 0
+                            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70'
+                            : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200/70'
+                        }`}
+                      >
+                        {dealYield}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right font-mono text-xs font-semibold text-slate-900">
                       {formatInr(ch.confirmed_value_inr)}
                     </td>
                   </tr>
                 );
               })}
+
+              {/* Bolded Outbound vs Warm Totals */}
+              <tr className="bg-slate-50/70 font-semibold text-slate-700">
+                <td className="px-4 py-2.5 text-xs">
+                  Cold Outbound Subtotal (Email + LinkedIn)
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs">
+                  {outbound_vs_warm.outbound_attempts}
+                </td>
+                <td colSpan={4} className="px-4 py-2.5 text-right text-[11px] text-slate-500">
+                  {outbound_vs_warm.outbound_effort_share_pct}% of total outreach effort
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-rose-700">
+                  {outbound_vs_warm.outbound_confirmed_deals}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-rose-700">
+                  {outbound_vs_warm.outbound_attempts > 0
+                    ? (
+                        (outbound_vs_warm.outbound_confirmed_deals /
+                          outbound_vs_warm.outbound_attempts) *
+                        100
+                      ).toFixed(1)
+                    : '0.0'}
+                  %
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-rose-700">
+                  {formatInr(outbound_vs_warm.outbound_confirmed_value_inr)}
+                </td>
+              </tr>
+              <tr className="bg-emerald-50/40 font-semibold text-slate-900">
+                <td className="px-4 py-2.5 text-xs">
+                  Warm Channels Subtotal (Intro + Web Inbound)
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs">
+                  {outbound_vs_warm.warm_attempts}
+                </td>
+                <td colSpan={4} className="px-4 py-2.5 text-right text-[11px] text-emerald-700">
+                  {outbound_vs_warm.warm_effort_share_pct}% of total outreach effort
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-emerald-700">
+                  {outbound_vs_warm.warm_confirmed_deals}
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-emerald-700">
+                  {outbound_vs_warm.warm_attempts > 0
+                    ? (
+                        (outbound_vs_warm.warm_confirmed_deals / outbound_vs_warm.warm_attempts) *
+                        100
+                      ).toFixed(1)
+                    : '0.0'}
+                  %
+                </td>
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-emerald-700">
+                  {formatInr(outbound_vs_warm.warm_confirmed_value_inr)}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -461,43 +630,56 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
 
       {/* Industry & Sponsor Concentration Breakdown */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs lg:col-span-2">
-          <h2 className="text-base font-semibold text-slate-900">
+        <div className={`${CARD_SURFACE} p-6 lg:col-span-2`}>
+          <h2 className="text-base font-semibold tracking-tight text-slate-900">
             Confirmed Sponsorship Value by Industry
           </h2>
-          <p className="text-xs text-slate-500">
-            Distribution of confirmed partner value across industries
+          <p className="mt-0.5 text-xs text-slate-500">
+            Distribution of confirmed partner commitments across vertical categories
           </p>
 
-          <div className="mt-4 h-72 w-full">
+          <div className="mt-5 h-72 w-full">
             {mounted && industry_concentration.industries.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={industry_concentration.industries}
-                  margin={{ top: 8, right: 24, left: 16, bottom: 16 }}
+                  margin={{ top: 8, right: 20, left: 12, bottom: 18 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis
                     dataKey="industry"
-                    tick={{ fontSize: 11, fill: '#334155' }}
+                    tick={{ fontSize: 12, fill: '#64748B' }}
                     interval={0}
                     angle={-10}
                     textAnchor="end"
-                    height={50}
+                    height={52}
                   />
                   <YAxis
                     tickFormatter={(v) => `₹${(Number(v) / 100000).toFixed(1)}L`}
-                    tick={{ fontSize: 11, fill: '#475569' }}
+                    tick={{ fontSize: 12, fill: '#64748B' }}
                   />
                   <Tooltip
-                    formatter={(value) => [formatInr(Number(value ?? 0)), 'Confirmed Value']}
-                    contentStyle={{
-                      borderRadius: '8px',
-                      borderColor: '#e2e8f0',
-                      fontSize: '12px',
+                    cursor={{ fill: '#F1F5F9' }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const item = payload[0]
+                        .payload as (typeof industry_concentration.industries)[number];
+                      return (
+                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg tabular-nums">
+                          <div className="font-semibold text-slate-900">{item.industry}</div>
+                          <div className="mt-0.5 text-slate-600">
+                            Confirmed:{' '}
+                            <strong className="text-slate-900">
+                              {formatInr(item.confirmed_value_inr)}
+                            </strong>{' '}
+                            ({item.share_pct}%)
+                          </div>
+                          <div className="text-slate-500">{item.confirmed_deals} deal(s)</div>
+                        </div>
+                      );
                     }}
                   />
-                  <Bar dataKey="confirmed_value_inr" radius={[6, 6, 0, 0]} barSize={38}>
+                  <Bar dataKey="confirmed_value_inr" radius={[6, 6, 0, 0]} barSize={40}>
                     {industry_concentration.industries.map((entry, idx) => (
                       <Cell
                         key={entry.industry}
@@ -518,16 +700,18 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
         </div>
 
         {/* Concentration Risk Panel */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900">Sponsor Concentration</h2>
+        <div className={`${CARD_SURFACE} p-6`}>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+              Sponsor Concentration
+            </h2>
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold tabular-nums ${
                 concRisk === 'red'
-                  ? 'bg-rose-100 text-rose-800'
+                  ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
                   : concRisk === 'amber'
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+                    : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
               }`}
             >
               <ShieldAlert className="h-3.5 w-3.5" />
@@ -540,14 +724,16 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
           </div>
 
           {largest ? (
-            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <div className="text-xs text-slate-500">Largest Single Sponsor Share</div>
-              <div className="mt-1 flex items-baseline justify-between">
+            <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 tabular-nums">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Largest Single Sponsor
+              </div>
+              <div className="mt-1.5 flex items-baseline justify-between">
                 <span className="text-sm font-semibold text-slate-900">
                   {largest.brand_name}{' '}
-                  <span className="font-mono text-xs text-slate-500">({largest.brand_id})</span>
+                  <span className="font-mono text-xs text-slate-400">({largest.brand_id})</span>
                 </span>
-                <span className="text-lg font-bold text-indigo-700">{largest.share_pct}%</span>
+                <span className="text-xl font-bold text-indigo-700">{largest.share_pct}%</span>
               </div>
               <div className="mt-0.5 text-xs text-slate-600">
                 {formatInr(largest.confirmed_value_inr)} across {largest.confirmed_deals} deal(s)
@@ -557,18 +743,18 @@ export function ExecutiveTab({ data, onNavigateToPipeline }: ExecutiveTabProps) 
             <p className="mt-3 text-xs text-slate-500">No confirmed sponsors yet.</p>
           )}
 
-          <div className="mt-4 space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <div className="mt-5 space-y-3 tabular-nums">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
               Top Confirmed Sponsors
             </div>
             {industry_concentration.top_sponsors.slice(0, 5).map((sp) => (
               <div key={sp.brand_id} className="space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-medium text-slate-800">
                     {sp.brand_name}{' '}
                     <span className="text-slate-400">({sp.industry})</span>
                   </span>
-                  <span className="font-mono font-semibold text-slate-900">
+                  <span className="shrink-0 font-mono font-semibold text-slate-900">
                     {formatInr(sp.confirmed_value_inr)} ({sp.share_pct}%)
                   </span>
                 </div>
